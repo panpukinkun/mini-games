@@ -562,17 +562,31 @@
   function speak(text) {
     try {
       if (!window.speechSynthesis) return;
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
       u.rate = 0.92;
       u.pitch = 1.05;
       if (jpVoice) u.voice = jpVoice;
+      u.onerror = () => {};
       window.speechSynthesis.speak(u);
     } catch (e) { /* 音声なしでも動作 */ }
   }
   if (window.speechSynthesis) {
     pickJapaneseVoice();
     window.speechSynthesis.onvoiceschanged = pickJapaneseVoice;
+    // 初回のユーザー操作で TTS をアンロック（iOS / Android で必要）
+    const primeTTS = () => {
+      try {
+        const u = new SpeechSynthesisUtterance("");
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    };
+    ["pointerdown", "touchstart", "keydown", "click"].forEach(ev =>
+      window.addEventListener(ev, primeTTS, { once: true, passive: true })
+    );
   }
 
   // ============ Web Audio 効果音・BGM ============
@@ -1217,8 +1231,8 @@
       fb.className = "feedback show bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
-      // 正しい九九の読みを聞かせる（間違えた時こそ正しく覚えてほしい）
-      setTimeout(() => speakFact(question.a, question.b), 400);
+      // 正しい九九の読みを聞かせる（間違えた時こそ正しく覚えてほしい／タップ内で再生）
+      speakFact(question.a, question.b);
       // おにぎり学習へ
       setTimeout(() => {
         showLearn();
