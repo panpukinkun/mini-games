@@ -825,7 +825,7 @@
   const pauseOverlay = document.getElementById("pauseOverlay");
   pauseBtn.addEventListener("click", pauseGame);
   pauseOverlay.querySelector("#resumeBtn").addEventListener("click", resumeGame);
-  pauseOverlay.querySelector("#topBtn").addEventListener("click", () => { location.href = "../"; });
+  pauseOverlay.querySelector("#topBtn").addEventListener("click", () => { location.reload(); });
   window.addEventListener("keydown", e => {
     if (e.key === "p" || e.key === "P" || e.key === "Escape") {
       if (pauseOverlay.style.display === "flex") resumeGame();
