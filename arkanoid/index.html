@@ -162,7 +162,7 @@
     B: { color: "#ffd24a", label: "B" }
   };
 
-  let paddle, balls, bricks, capsules, lasers, particles, boss;
+  let paddle, balls, bricks, capsules, lasers, particles, boss, bossBullets;
   let score, lives, continues, level, running, gameOver, won;
   let keyLeft = false, keyRight = false;
   let laserActive = false, catchActive = false;
@@ -249,12 +249,12 @@
   }
 
   function createBoss() {
-    boss = { x: W / 2, y: H * 0.28, r: W * 0.13, vx: W * 0.006,
-             hp: 14, maxhp: 14, alive: true, t: 0, hitFlash: 0 };
+    boss = { x: W / 2, y: H * 0.28, r: W * 0.13, vx: W * 0.009,
+             hp: 18, maxhp: 18, alive: true, t: 0, hitFlash: 0, fireCD: 60 };
   }
 
   function buildLevel() {
-    capsules = []; lasers = []; particles = [];
+    capsules = []; lasers = []; particles = []; bossBullets = [];
     if (level >= BOSS_LEVEL) { bricks = []; createBoss(); }
     else { bricks = generateBricks(level); boss = null; }
   }
@@ -366,11 +366,30 @@
     paddle.w = paddle.baseW;
     laserActive = false; catchActive = false;
     balls = [newBall(true)];
+    bossBullets = [];
     banner = 70; bannerText = "CONTINUE";
     running = true;
     overlay.classList.add("hidden");
     last = 0;
     requestAnimationFrame(loop);
+  }
+
+  function loseLife() {
+    lives--;
+    sfx.lose();
+    if (lives <= 0) {
+      if (continues > 0) {
+        running = false;
+        overlayAction = continueGame;
+        showOverlay("コンティニューしますか？", "残りコンティニュー: " + continues + " 回<br>スコア: " + score, "コンティニュー");
+      } else {
+        running = false; gameOver = true;
+        overlayAction = startGame;
+        showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
+      }
+      return true;
+    }
+    return false;
   }
 
   function update(dt) {
@@ -463,20 +482,8 @@
     balls = balls.filter(b => !(b.y - b.r > H));
 
     if (balls.length === 0 && running) {
-      lives--;
-      sfx.lose();
-      if (lives <= 0) {
-        if (continues > 0) {
-          running = false;
-          overlayAction = continueGame;
-          showOverlay("コンティニューしますか？", "残りコンティニュー: " + continues + " 回<br>スコア: " + score, "コンティニュー");
-        } else {
-          running = false; gameOver = true;
-          overlayAction = startGame;
-          showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
-        }
-        return;
-      }
+      if (boss) bossBullets = [];
+      if (loseLife()) return;
       resetBall();
       return;
     }
@@ -526,7 +533,7 @@
     }
     lasers = lasers.filter(l => !l.dead && l.y > -10);
 
-    // ボス移動
+    // ボス移動＋攻撃
     if (boss && boss.alive) {
       boss.x += boss.vx * dt;
       if (boss.x - boss.r < 0) { boss.x = boss.r; boss.vx *= -1; }
@@ -534,6 +541,35 @@
       boss.t += dt;
       boss.y = H * 0.28 + Math.sin(boss.t * 0.02) * H * 0.03;
       if (boss.hitFlash > 0) boss.hitFlash -= dt;
+
+      // 弾幕発射
+      boss.fireCD -= dt;
+      if (boss.fireCD <= 0) {
+        const enraged = boss.hp <= boss.maxhp / 2;
+        boss.fireCD = enraged ? 38 : 62;
+        const aimX = paddle.x + paddle.w / 2;
+        const baseA = Math.atan2(paddle.y - boss.y, aimX - boss.x);
+        const shots = enraged ? [-0.25, 0, 0.25] : [0];
+        const sp = H * 0.013;
+        for (const da of shots) {
+          const a = baseA + da;
+          bossBullets.push({ x: boss.x, y: boss.y + boss.r * 0.6, r: W * 0.018,
+                             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp });
+        }
+      }
+    }
+
+    // ボス弾の移動・衝突
+    if (bossBullets.length) {
+      for (const bl of bossBullets) {
+        bl.x += bl.vx * dt; bl.y += bl.vy * dt;
+        if (bl.y + bl.r >= paddle.y && bl.y - bl.r <= paddle.y + paddle.h &&
+            bl.x >= paddle.x && bl.x <= paddle.x + paddle.w) {
+          bl.dead = true;
+          if (loseLife()) return;
+        }
+      }
+      bossBullets = bossBullets.filter(bl => !bl.dead && bl.y - bl.r < H && bl.x > -20 && bl.x < W + 20);
     }
 
     // クリア判定（通常面）
@@ -626,6 +662,14 @@
     // レーザー
     ctx.fillStyle = "#ff5d5d";
     for (const l of lasers) ctx.fillRect(l.x - 2, l.y - 10, 4, 12);
+
+    // ボス弾
+    for (const bl of bossBullets) {
+      ctx.fillStyle = "#ff7a3c";
+      ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r * 0.5, 0, 7); ctx.fill();
+    }
 
     // ボール
     for (const b of balls) {
