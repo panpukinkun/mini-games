@@ -214,7 +214,7 @@
     };
   }
 
-  function ballSpeed() { return H * (0.010 + level * 0.0009); }
+  function ballSpeed() { return H * (0.010 + level * 0.0007); }
 
   function releaseBall(b) {
     const speed = ballSpeed();
@@ -266,8 +266,8 @@
         if (skipPattern(lv, r, c, rows, cols)) continue;
         let type = "normal";
         const rnd = Math.random();
-        const steelCh = Math.min(0.03 + level * 0.012, 0.16);
-        const metalCh = Math.min(0.08 + level * 0.012, 0.28);
+        const steelCh = Math.min(0.02 + level * 0.010, 0.13);
+        const metalCh = Math.min(0.06 + level * 0.011, 0.24);
         if (rnd < steelCh) type = "steel";
         else if (rnd < steelCh + metalCh) type = "metal";
         arr.push({
@@ -282,8 +282,8 @@
   }
 
   function createBoss() {
-    boss = { x: W / 2, y: H * 0.28, r: W * 0.13, vx: W * 0.009,
-             hp: 18, maxhp: 18, alive: true, t: 0, hitFlash: 0, fireCD: 60 };
+    boss = { x: W / 2, y: H * 0.28, r: W * 0.13, vx: W * 0.008,
+             hp: 16, maxhp: 16, alive: true, t: 0, hitFlash: 0, fireCD: 80 };
   }
 
   function buildLevel() {
@@ -329,6 +329,13 @@
   }
   function spawnCapsule(x, y) {
     if (capsules.length > 0) return; // 原作通り同時に1つ
+    const type = weightedCapsule();
+    const cw = W * 0.05, ch = H * 0.026;
+    capsules.push({ x: x - cw / 2, y: y, w: cw, h: ch, type });
+  }
+
+  function spawnBossCapsule(x, y) {
+    if (capsules.length >= 2) return; // ボス戦は同時2つまで許容
     const type = weightedCapsule();
     const cw = W * 0.05, ch = H * 0.026;
     capsules.push({ x: x - cw / 2, y: y, w: cw, h: ch, type });
@@ -502,11 +509,12 @@
           const nx = dx / d, ny = dy / d;
           const dot = b.vx * nx + b.vy * ny;
           b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
-          b.x = boss.x + nx * (boss.r + b.r + 1);
-          b.y = boss.y + ny * (boss.r + b.r + 1);
-          boss.hp--; boss.hitFlash = 8;
-          addParticles(b.x, b.y, "#ff5d5d", 10);
-          sfx.bossHit();
+           b.x = boss.x + nx * (boss.r + b.r + 1);
+           b.y = boss.y + ny * (boss.r + b.r + 1);
+           boss.hp--; boss.hitFlash = 8;
+           addParticles(b.x, b.y, "#ff5d5d", 10);
+           sfx.bossHit();
+           if (Math.random() < 0.12) spawnBossCapsule(b.x, b.y);
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
              running = false; won = true; inSession = false; pauseBtn.style.display = "none";
@@ -568,6 +576,7 @@
         if (dx * dx + dy * dy < boss.r * boss.r) {
           boss.hp--; boss.hitFlash = 8; l.dead = true;
           addParticles(l.x, l.y, "#ff5d5d", 8); sfx.bossHit();
+          if (Math.random() < 0.12) spawnBossCapsule(l.x, l.y);
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
              running = false; won = true; inSession = false; pauseBtn.style.display = "none";
@@ -589,14 +598,14 @@
       if (boss.hitFlash > 0) boss.hitFlash -= dt;
 
       // 弾幕発射
-      boss.fireCD -= dt;
+       boss.fireCD -= dt;
       if (boss.fireCD <= 0) {
         const enraged = boss.hp <= boss.maxhp / 2;
-        boss.fireCD = enraged ? 38 : 62;
+        boss.fireCD = enraged ? 55 : 100;
         const aimX = paddle.x + paddle.w / 2;
         const baseA = Math.atan2(paddle.y - boss.y, aimX - boss.x);
-        const shots = enraged ? [-0.25, 0, 0.25] : [0];
-        const sp = H * 0.013;
+        const shots = enraged ? [-0.22, 0, 0.22] : [0];
+        const sp = H * 0.012;
         for (const da of shots) {
           const a = baseA + da;
           bossBullets.push({ x: boss.x, y: boss.y + boss.r * 0.6, r: W * 0.018,
