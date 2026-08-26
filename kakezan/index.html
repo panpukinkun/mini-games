@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-  <title>算数忍者 〜九九の巻〜</title>
+  <title>掛け算忍者 〜九九の巻〜</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -278,7 +278,7 @@
   .hidden { display: none !important; }
   .disabled { pointer-events: none; opacity: 0.5; }
 
-  /* ===== 本家「算数忍者」風の追加演出 ===== */
+  /* ===== 本家「掛け算忍者」風の追加演出 ===== */
   /* トップ画面の9人の先生 */
   .master-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 8px 0 4px; }
   .master-row .m { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(120,70,20,0.3)); }
@@ -397,7 +397,7 @@
   const MASTERS = {
     1: {
       name: "わん丸先生", emoji: "🐶",
-      trait: "明るい性格で何でも相談に乗ってくれる。算数忍者の中で鼻と耳が一番良くきく。",
+      trait: "明るい性格で何でも相談に乗ってくれる。掛け算忍者の中で鼻と耳が一番良くきく。",
       intro: "1の段は九九のはじまり！わんっ、いっしょにがんばるぞ！",
       lines: ["1のだん、れんしゅうじゃ！", "わんっ、いくぞ！", "ぜんぶ 1ばい だ！", "きっと できるワン！"],
       boss: "わん丸先生だ！こらえてみせる！",
@@ -797,7 +797,7 @@
       <div class="title-sakura" style="left:55%; animation-delay:4s"></div>
       <div class="title-sakura" style="left:78%; animation-delay:1s"></div>
       <div class="title-sakura" style="left:90%; animation-delay:3s"></div>
-      <div class="logo">算数忍者<span class="small">〜 九九の巻 〜</span></div>
+      <div class="logo">掛け算忍者<span class="small">〜 九九の巻 〜</span></div>
       <div class="title-master">🥷</div>
       <div class="master-row">${masters.join("")}</div>
       <div class="title-tag">くのいち・忍者になって、9人の「先生」をたおそう！</div>
@@ -917,7 +917,7 @@
       <div class="screen-sub">段の「先生」をたおして、九九をマスターしよう！</div>
       <div class="map-grid" id="mapGrid"></div>
       <div class="footer-nav">
-        <button class="btn" id="btnMixNav">🔀 ミックス実践</button>
+        <button class="btn" id="btnMixNav">🔀 ミックス修行</button>
         <button class="btn gold" id="btnCardsNav2">🎴 カード</button>
         <button class="btn gold" id="btnRecNav2">📊 成績表</button>
       </div>
@@ -953,7 +953,7 @@
     s.querySelector("#btnMixNav").addEventListener("click", () => { SFX.click(); startMix(); });
   }
 
-  // ============ ミックス実践（1〜9の段 まぜこぜ） ============
+  // ============ ミックス修行（1〜9の段 まぜこぜ） ============
   function startMix() {
     stopSpeak();
     show("introScreen");
@@ -961,9 +961,9 @@
     s.innerHTML = `
       <button class="btn icon" id="btnMixBack" style="position:absolute;top:14px;left:14px">◀ もどる</button>
       <div class="master-big">🔀</div>
-      <div class="master-name">ミックス実践</div>
+      <div class="master-name">ミックス修行</div>
       <div class="stage-badge boss">1〜9の段 まぜこぜ</div>
-      <div class="speech">1の段から9の段まで、ランダムにもぜこぜで出題するぞ！どの段でも素早くこたえられるかな？</div>
+      <div class="speech">1の段から9の段まで、ランダムにまぜこぜで出題するぞ！クリアすると「ミックスマスター」カードがもらえる！</div>
       <button class="btn big" id="btnStartMix">いくぞ！</button>
     `;
     s.querySelector("#btnStartMix").addEventListener("click", () => { SFX.click(); startBonus(); });
@@ -1385,7 +1385,7 @@
 
     const btn = s.querySelector("#btnNext");
     if (isComplete) {
-      btn.textContent = allCleared ? "ボーナスステージへ！" : "つぎの段へ！";
+      btn.textContent = allCleared ? "ミックス修行へ！" : "つぎの段へ！";
     } else if (stageIdx < 3) {
       btn.textContent = "つぎのステージへ！";
     } else {
@@ -1406,15 +1406,15 @@
     });
   }
 
-  // ============ ボーナスステージ ============
+  // ============ ミックス修行（全段クリア後のボーナス） ============
   function showBonus() {
     stopSpeak();
     show("bonusScreen");
     const s = screens.bonusScreen;
     s.innerHTML = `
       <div class="bonus-emoji">🌟</div>
-      <div class="clear-title">ボーナスステージ！</div>
-      <div class="speech">ぜんぶの段をマスターした、真の算数忍者だ！<br>ボーナスステージで、むちゃくちゃむずかしい九九にちょうせん！</div>
+      <div class="clear-title">ミックス修行！</div>
+      <div class="speech">ぜんぶの段をマスターした、真の掛け算忍者だ！<br>ミックス修行で、むちゃくちゃむずかしい九九にちょうせん！</div>
       <div class="stage-badge boss" style="margin:6px 0">ランダムの段・まぜこぜ出題</div>
       <div class="footer-nav" style="position:static;margin-top:10px">
         <button class="btn big gold" id="btnBonusGo">ちょうせん！</button>
@@ -1458,21 +1458,32 @@
     show("clearScreen");
     const s = screens.clearScreen;
     const p = ensurePlayer(currentPlayer);
-    // ボーナスクリア：全カードコンプ + レア
+    // ミックス修行クリア：ミックスマスターカードを必ず獲得
+    const gotMix = !p.cards["mix"];
+    if (gotMix) p.cards["mix"] = true;
+    // 全カードコンプ時のレアカード
     const complete = Object.keys(p.cards).length >= 9;
+    const gotLegend = complete && !p.cards["legend"];
+    if (gotLegend) p.cards["legend"] = true;
+    saveData();
     s.innerHTML = `
       <div class="clear-emoji">🌟</div>
-      <div class="clear-title">ボーナスステージ クリア！</div>
-      <div class="card-reward ${complete ? "" : "hidden"}">
-        <div class="c-emoji">👑</div>
-        <div class="c-name">真の算数忍者 ジョウ</div>
-        <div class="c-new">伝説！</div>
+      <div class="clear-title">ミックス修行 クリア！</div>
+      <div class="card-reward">
+        <div class="c-emoji">🌀</div>
+        <div class="c-name">ミックスマスター</div>
+        <div class="c-new">NEW!</div>
       </div>
+      ${complete ? `<div class="card-reward">
+        <div class="c-emoji">👑</div>
+        <div class="c-name">真の掛け算忍者 ジョウ</div>
+        <div class="c-new">${gotLegend ? "NEW!" : "伝説！"}</div>
+      </div>` : ""}
       <div class="footer-nav">
         <button class="btn big" id="btnBonusDone">おしまい</button>
       </div>
     `;
-    if (complete) { p.cards["legend"] = true; saveData(); SFX.card(); }
+    if (gotMix || gotLegend) SFX.card();
     SFX.clear();
     s.querySelector("#btnBonusDone").addEventListener("click", () => { SFX.click(); enterMap(); });
   }
@@ -1488,7 +1499,7 @@
         <span style="font-weight:900">🎴 カードコレクション</span>
         <button class="btn gold icon" id="btnCardsBack">◀ もどる</button>
       </div>
-        <div class="screen-sub">修行・実践をクリアして「先生」カードをゲット！（1の段〜9の段）</div>
+        <div class="screen-sub">先生カードは段クリア、ミックスカードはミックス修行クリアでゲット！</div>
       <div class="card-grid" id="cardGrid"></div>
       <div class="footer-nav">
         <button class="btn" id="btnCardHome">🏠 ホーム</button>
@@ -1514,11 +1525,21 @@
     legend.className = "card-item" + (p.cards["legend"] ? " got" : " ng");
     legend.innerHTML = `
       <div class="c-emoji">${p.cards["legend"] ? "👑" : "❓"}</div>
-      <div class="c-name">${p.cards["legend"] ? "真の算数忍者ジョウ" : "？？？"}</div>
+      <div class="c-name">${p.cards["legend"] ? "真の掛け算忍者ジョウ" : "？？？"}</div>
       <div style="font-size:11px;color:#9a7a5a">伝説</div>
     `;
     legend.addEventListener("click", () => { SFX.click(); showCardDetail("legend"); });
     grid.appendChild(legend);
+    // ミックスカード
+    const mixc = document.createElement("div");
+    mixc.className = "card-item" + (p.cards["mix"] ? " got" : " ng");
+    mixc.innerHTML = `
+      <div class="c-emoji">${p.cards["mix"] ? "🌀" : "❓"}</div>
+      <div class="c-name">${p.cards["mix"] ? "ミックスマスター" : "？？？"}</div>
+      <div style="font-size:11px;color:#9a7a5a">ミックス修行</div>
+    `;
+    mixc.addEventListener("click", () => { SFX.click(); showCardDetail("mix"); });
+    grid.appendChild(mixc);
     s.querySelector("#btnCardsBack").addEventListener("click", () => { SFX.click(); renderSlots(); });
     s.querySelector("#btnCardHome").addEventListener("click", () => { SFX.click(); renderSlots(); });
   }
@@ -1527,11 +1548,19 @@
     const ov = document.getElementById("cardModal");
     const body = document.getElementById("cardModalBody");
     const p = ensurePlayer(currentPlayer);
-    if (key === "legend") {
+    if (key === "mix") {
+      const got = !!p.cards["mix"];
+      body.innerHTML = `
+        <div class="modal-emoji" style="font-size:64px">🌀</div>
+        <div class="modal-name">${got ? "ミックスマスター" : "？？？"}</div>
+        <div class="modal-trait">${got ? "ミックス修行をクリアした、あらゆる九九を使いこなす伝説の忍者" : "ミックス修行をクリアすると解放！"}</div>
+        <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
+      `;
+    } else if (key === "legend") {
       const got = !!p.cards["legend"];
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">👑</div>
-        <div class="modal-name">${got ? "真の算数忍者ジョウ" : "？？？"}</div>
+        <div class="modal-name">${got ? "真の掛け算忍者ジョウ" : "？？？"}</div>
         <div class="modal-trait">${got ? "すべての段をマスターした伝説の忍者" : "9つの段をすべてクリアで解放"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
