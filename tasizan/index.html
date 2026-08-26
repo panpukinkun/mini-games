@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-  <title>掛け算忍者 〜九九の巻〜</title>
+  <title>たしざん・ひきざん忍者 〜れんしゅうの巻〜</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -118,8 +118,16 @@
   .name-modal .row { display: flex; gap: 10px; justify-content: center; }
 
   /* ---- 段マップ ---- */
-  #mapScreen { padding: 14px; }
-  .map-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 10px 4px 80px; align-content: start; }
+   #mapScreen { padding: 14px; }
+   .filter-bar { display: flex; gap: 8px; justify-content: center; padding: 4px 0 10px; flex-wrap: wrap; }
+   .fbtn {
+     border: 3px solid #e8d5b8; background: #fff; color: #8a6a4a; font-family: inherit;
+     font-weight: 800; font-size: 15px; border-radius: 999px; padding: 8px 18px; cursor: pointer;
+     transition: transform 0.08s, background 0.12s;
+   }
+   .fbtn:active { transform: translateY(2px); }
+   .fbtn.active { background: linear-gradient(180deg, #f77f6b, #d64541); color: #fff; border-color: #a93226; box-shadow: 0 4px 0 #a93226; }
+   .map-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 10px 4px 80px; align-content: start; }
   .map-cell {
     background: #fff; border: 3px solid #e8d5b8; border-radius: 20px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -394,80 +402,67 @@
   "use strict";
 
   // ============ 先生キャラクター（段ごと）＝本家キャラ準拠 ============
-  const MASTERS = {
-    1: {
-      name: "わん丸先生", emoji: "🐶",
-      trait: "明るい性格で何でも相談に乗ってくれる。掛け算忍者の中で鼻と耳が一番良くきく。",
-      intro: "1の段は九九のはじまり！わんっ、いっしょにがんばるぞ！",
-      lines: ["1のだん、れんしゅうじゃ！", "わんっ、いくぞ！", "ぜんぶ 1ばい だ！", "きっと できるワン！"],
+  // ===== レベル（カリキュラム準拠・たしざん/ひきざん）=====
+  // op: 'add' | 'sub' / carry: くりあがり(たし)・くり下がり(ひき) あり / max: 正答の最大値
+  const LEVELS = {
+    1: { grade: 1, op: "add", carry: false, max: 10,  emoji: "🐶", name: "わん丸先生",
+      label: "たしざん 10まで", short: "たし 10",
+      trait: "明るい性格で何でも相談に乗ってくれる。けいさん道場でいちばんやさしい先生。",
+      intro: "たしざん、はじまるワン！ 10までを がんばろう！",
+      lines: ["たしざん、れんしゅうじゃ！", "わんっ、いくぞ！", "すうじを くわえてみよう！", "きっと できるワン！"],
       boss: "わん丸先生だ！こらえてみせる！",
-      bossLines: ["ほえー！", "こらえるぞ！", "まだまだじゃ！", "わん丸、ホンキだ！"]
-    },
-    2: {
-      name: "ぴよひげ先生", emoji: "🐣",
-      trait: "無口だがみんなに優しい。頭の中にひよこが住んでいて、毎日2時間一緒に遊んでいる。",
-      intro: "2の段！ぴよぴよ、かんたんにのりこえるよ！",
-      lines: ["2のだん、はじまるぴよ！", "ぴよ、れんしゅうじゃ！", "2ばい おぼえよう！", "ぴよひげ、おねがい！"],
+      bossLines: ["ほえー！", "こらえるぞ！", "まだまだじゃ！", "わん丸、ホンキだ！"] },
+    2: { grade: 1, op: "add", carry: false, max: 20,  emoji: "🐣", name: "ぴよひげ先生",
+      label: "たしざん 20まで", short: "たし 20",
+      trait: "無口だがみんなに優しい。2けたのすうじを くわせるのが じょうず。",
+      intro: "たしざん 20まで！ぴよぴよ、くりあがりなしで いけるよ！",
+      lines: ["20まで、はじまるぴよ！", "ぴよ、れんしゅうじゃ！", "くりあがり なしだよ！", "ぴよひげ、おねがい！"],
       boss: "ぴよひげ先生、本気だす！",
-      bossLines: ["ぴよぴよー！", "こらえるぴよ！", "まだいけるぴよ！", "ぴよひげ、ホンキ！"]
-    },
-    3: {
-      name: "クリス先生", emoji: "🦜",
-      trait: "海のむこうからやって来た青い目をした先生。生まれてはじめて覚えた言葉が「3」らしい。",
-      intro: "3の段！ハロー、いっしょにたのしもう！",
-      lines: ["3のだん、レッツゴー！", "ハロー、れんしゅう！", "3ばい チャレンジ！", "ナイス、いくよ！"],
+      bossLines: ["ぴよぴよー！", "こらえるぴよ！", "まだいけるぴよ！", "ぴよひげ、ホンキ！"] },
+    3: { grade: 1, op: "add", carry: true,  max: 20,  emoji: "🦜", name: "クリス先生",
+      label: "たしざん 20まで(くりあがり)", short: "たし 20☆",
+      trait: "海のむこうからやって来た先生。くりあがりの コツを おしえてくれる。",
+      intro: "くりあがり たしざん！ 10こで まとめるのが ポイントだよ！",
+      lines: ["くりあがり、レッツゴー！", "ハロー、れんしゅう！", "10こで まとめよう！", "ナイス、いくよ！"],
       boss: "クリス先生、そろそろホンキだよ！",
-      bossLines: ["オーケー！", "コラエール！", "ユーキャン！", "クリス、ホンキ！"]
-    },
-    4: {
-      name: "からくり先生", emoji: "🤖",
-      trait: "からくり人形の先生。おなかの中には中のねずみが住み着いている。",
-      intro: "4の段！からくりメカで修行だ！",
-      lines: ["4のだん、カチカチ！", "からくり、れんしゅう！", "4ばい ガチャン！", "メカ、スタート！"],
-      boss: "からくり先生、ハイパーモード起動！",
-      bossLines: ["ギガギガ！", "カラクリ、ホンキ！", "メカ、マックス！", "ハイパー、ゴー！"]
-    },
-    5: {
-      name: "ごろ先生", emoji: "🐻",
-      trait: "のんびりやの熊の先生。5の段が得意で、いつもごろごろしながら教えてくれる。",
-      intro: "5の段！くまらずにどんどんいくぞ！",
-      lines: ["5のだん、ごろん！", "くま、れんしゅう！", "5ばい ラクラク！", "のんびり、いくよ！"],
+      bossLines: ["オーケー！", "コラエール！", "ユーキャン！", "クリス、ホンキ！"] },
+    4: { grade: 1, op: "sub", carry: false, max: 10,  emoji: "🐻", name: "ごろ先生",
+      label: "ひきざん 10まで", short: "ひき 10",
+      trait: "のんびりやの熊の先生。ひきざんが だいすきで いつもごろごろ教えてくれる。",
+      intro: "ひきざん、はじまるクマ！ 10までを しっかり ひこう！",
+      lines: ["ひきざん、ごろん！", "くま、れんしゅう！", "すくなく なるよ！", "のんびり、いくよ！"],
       boss: "ごろ先生、とびかかってくるぞ！",
-      bossLines: ["ぐるる！", "こらえるクマ！", "まだやるクマ！", "ごろ、ホンキ！"]
-    },
-    6: {
-      name: "つばき先生", emoji: "🥷",
-      trait: "6の段を教えるくのいち。くさり鎌を改造したリボン鎌を使う。実は大食いで毎日お弁当を6個食べる。",
-      intro: "6の段！くのいちのけいこはきびしいぜ！",
-      lines: ["6のだん、しゅっと！", "くのいち、れんしゅう！", "6ばい ひらり！", "リボン、いくよ！"],
+      bossLines: ["ぐるる！", "こらえるクマ！", "まだやるクマ！", "ごろ、ホンキ！"] },
+    5: { grade: 1, op: "sub", carry: false, max: 20,  emoji: "🤖", name: "からくり先生",
+      label: "ひきざん 20まで", short: "ひき 20",
+      trait: "からくり人形の先生。ぶんの こころえを からくりで おしえる。",
+      intro: "ひきざん 20まで！ くり下がりなしで いこう！",
+      lines: ["20まで、カチカチ！", "からくり、れんしゅう！", "くり下がり なしだよ！", "メカ、スタート！"],
+      boss: "からくり先生、ハイパーモード起動！",
+      bossLines: ["ギガギガ！", "カラクリ、ホンキ！", "メカ、マックス！", "ハイパー、ゴー！"] },
+    6: { grade: 1, op: "sub", carry: true,  max: 20,  emoji: "🥷", name: "つばき先生",
+      label: "ひきざん 20まで(くり下がり)", short: "ひき 20☆",
+      trait: "くのいちの先生。くり下がりの コツ、『10こを ほぐす』を おしえる。",
+      intro: "くり下がり ひきざん！ 10こを ほぐすのが ポイントだよ！",
+      lines: ["くり下がり、しゅっと！", "くのいち、れんしゅう！", "10こを ほぐそう！", "リボン、いくよ！"],
       boss: "つばき先生、リボン鎌のすがたみせます！",
-      bossLines: ["ひゃっ！", "こらえるぜ！", "まだいける！", "つばき、ホンキ！"]
-    },
-    7: {
-      name: "旅ネコ先生", emoji: "🐱",
-      trait: "世界中を旅している猫。算数に興味があって九九道場をたずねてきた。7の段が苦手らしい。",
-      intro: "7の段！にゃんともむずかしいけどだいじょうぶ！",
-      lines: ["7のだん、にゃー！", "旅ネコ、れんしゅう！", "7ばい チャレンジ！", "にゃん、いくよ！"],
+      bossLines: ["ひゃっ！", "こらえるぜ！", "まだいける！", "つばき、ホンキ！"] },
+    7: { grade: 2, op: "add", carry: true,  max: 100, emoji: "🐱", name: "旅ネコ先生",
+      label: "たしざん 100まで", short: "たし 100",
+      trait: "世界中を旅している猫。2けた＋2けたの たしざんが とくい。",
+      intro: "たしざん 100まで！ にゃんとも むずかしいけど だいじょうぶ！",
+      lines: ["100まで、にゃー！", "旅ネコ、れんしゅう！", "くりあがり チャレンジ！", "にゃん、いくよ！"],
       boss: "旅ネコ先生、ねこのあなをぬけてやる！",
-      bossLines: ["にゃー！", "こらえるにゃ！", "まだやるにゃ！", "旅ネコ、ホンキ！"]
-    },
-    8: {
-      name: "中のねずみ先生", emoji: "🐭",
-      trait: "からくり先生のおなかの中に住み着いているねずみ。イタズラ好きだが本当はいいやつ。",
-      intro: "8の段！ちゅう、からくりの中からちゅうい！",
-      lines: ["8のだん、チュウ！", "ねずみ、れんしゅう！", "8ばい チュウチュウ！", "ちゅう、いくよ！"],
-      boss: "中のねずみ先生、チュウチュウとおどる！",
-      bossLines: ["チュウチュウ！", "こらえるチュウ！", "まだやるチュウ！", "ねずみ、ホンキ！"]
-    },
-    9: {
-      name: "九兵衛先生", emoji: "🐉",
-      trait: "最強の龍の先生。すべての九九をつかいこなす、道場の長。",
-      intro: "さいごの9の段！すべての九九をつかうぞ！",
-      lines: ["9のだん、ガオー！", "りゅう、れんしゅう！", "9ばい フルスイング！", "いくぞ、ガオ！"],
+      bossLines: ["にゃー！", "こらえるにゃ！", "まだやるにゃ！", "旅ネコ、ホンキ！"] },
+    8: { grade: 2, op: "sub", carry: true,  max: 100, emoji: "🐉", name: "九兵衛先生",
+      label: "ひきざん 100まで", short: "ひき 100",
+      trait: "最強の龍の先生。すべてのけいさんを つかいこなす、道場の長。",
+      intro: "さいごの ひきざん 100まで！ すべての わざを つかうぞ！",
+      lines: ["100まで、ガオー！", "りゅう、れんしゅう！", "くり下がり フルスイング！", "いくぞ、ガオ！"],
       boss: "九兵衛先生、さいごのほのおをみせます！",
-      bossLines: ["ガオー！", "こらえるドラゴン！", "まだまだじゃ！", "九兵衛、ホンキ！"]
-    }
+      bossLines: ["ガオー！", "こらえるドラゴン！", "まだまだじゃ！", "九兵衛、ホンキ！"] }
   };
+  const LEVEL_COUNT = 8;
 
   // ============ オリジナル忍者キャラ（SVG） ============
   const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"dragon" };
@@ -522,43 +517,32 @@
   // ============ 音声 ============
   // 九九の読み方（童謡風・連声込みの正しい暗唱。出典：童謡童話王国「九九の歌」/ 山野さと子「99のうた」/ ACTABA）
   // KUKU[a][b] = a×b の暗唱。正統な九九のうたの流し方では、答えが1桁(1〜9)のときだけ「が」を入れ、答えが2桁以上（「じゅう」を含む）のときは入れない。
-  const KUKU = {
-    1: {1:"いんいちがいち",2:"いんにがに",3:"いんさんがさん",4:"いんしがし",5:"いんごがご",6:"いんろくがろく",7:"いんしちがしち",8:"いんはちがはち",9:"いんくがく"},
-    2: {1:"にいちがに",2:"ににんがし",3:"にさんがろく",4:"にしがはち",5:"にごじゅう",6:"にろくじゅうに",7:"にしちじゅうし",8:"にはちじゅうろく",9:"にくじゅうはち"},
-    3: {1:"さんいちがさん",2:"さんにがろく",3:"さざんがく",4:"さんしじゅうに",5:"さんごじゅうご",6:"さぶろくじゅうはち",7:"さんしちにじゅういち",8:"さんぱにじゅうし",9:"さんくにじゅうしち"},
-    4: {1:"しいちがし",2:"しにがはち",3:"しさんじゅうに",4:"ししじゅうろく",5:"しごにじゅう",6:"しろくにじゅうし",7:"ししちにじゅうはち",8:"しハさんじゅうに",9:"しくさんじゅうろく"},
-    5: {1:"ごいちがご",2:"ごにじゅう",3:"ごさんじゅうご",4:"ごしにじゅう",5:"ごごにじゅうご",6:"ごろくさんじゅう",7:"ごしちさんじゅうご",8:"ごハしじゅう",9:"ごっくしじゅうご"},
-    6: {1:"ろくいちがろく",2:"ろくにじゅうに",3:"ろくさんじゅうはち",4:"ろくしにじゅうし",5:"ろくごさんじゅう",6:"ろくろくさんじゅうろく",7:"ろくしちしじゅうに",8:"ろくハしじゅうはち",9:"ろっくごじゅうし"},
-    7: {1:"しちいちがしち",2:"しちにじゅうし",3:"しちさんにじゅういち",4:"しちしにじゅうはち",5:"しちごさんじゅうご",6:"しちろくしじゅうに",7:"しちしちしじゅうく",8:"しちハごじゅうろく",9:"しちくろくじゅうさん"},
-    8: {1:"はちいちがはち",2:"はちにじゅうろく",3:"はちさんにじゅうし",4:"はちしさんじゅうに",5:"はちごしじゅう",6:"はちろくしじゅうはち",7:"はちしちごじゅうろく",8:"はっぱろくじゅうし",9:"はっくしちじゅうに"},
-    9: {1:"くいちがく",2:"くにじゅうはち",3:"くさんにじゅうしち",4:"くしさんじゅうろく",5:"くごしじゅうご",6:"くろくごじゅうし",7:"くしちろくじゅうさん",8:"くハしちじゅうに",9:"くくはちじゅういち"}
-  };
-  // 答えの読み（連声は答えには入らない）
-  const KU_DIGIT = ["", "いち", "に", "さん", "し", "ご", "ろく", "しち", "はち", "く"];
-  function prodKana(n) {
-    if (n <= 9) return KU_DIGIT[n];
-    if (n === 10) return "じゅう";
+  // ===== よみあげ（たしざん・ひきざん）=====
+  const KANA = ["", "いち", "に", "さん", "し", "ご", "ろく", "しち", "はち", "く", "じゅう"];
+  function numToKana(n) {
+    if (n === 0) return "ぜろ";
+    if (n <= 10) return KANA[n];
+    if (n === 100) return "ひゃく";
     const t = Math.floor(n / 10), o = n % 10;
-    return (t === 1 ? "じゅう" : KU_DIGIT[t] + "じゅう") + (o > 0 ? KU_DIGIT[o] : "");
+    return (t === 1 ? "じゅう" : KANA[t] + "じゅう") + (o > 0 ? KANA[o] : "");
   }
-  // 出題時：答えを言わず、因数部だけを読み上げ（答え1桁のときは「が」付き、2桁以上は「が」なし）
-  function kukuQuestion(a, b) {
-    const s = KUKU[a][b];
-    if (s.includes("が")) return s.slice(0, s.indexOf("が") + 1);
-    return s.slice(0, s.length - prodKana(a * b).length);
+  const OP_KANA = { add: "たす", sub: "ひく" };
+  // 出題時：問題だけ読み上げ（答えは言わない）
+  function qText(a, b, op) {
+    return numToKana(a) + " " + OP_KANA[op] + " " + numToKana(b) + " は";
   }
-  // 正解時・誤答時：正答ごと読み上げ
-  function kukuFact(a, b) {
-    return KUKU[a][b];
+  // 正解・誤答時：正答ごと読み上げ
+  function factText(a, b, op, correct) {
+    return numToKana(a) + " " + OP_KANA[op] + " " + numToKana(b) + " は " + numToKana(correct);
   }
   let muted = false;
-  function speakKuku(a, b) {
+  function speakQ(a, b, op) {
     if (muted) return;
-    speak(kukuQuestion(a, b));
+    speak(qText(a, b, op));
   }
-  function speakFact(a, b, onend) {
+  function speakFact2(a, b, op, correct, onend) {
     if (muted) { if (onend) onend(); return; }
-    speak(kukuFact(a, b), onend);
+    speak(factText(a, b, op, correct), onend);
   }
 
   // 日本語音声の選択（getVoices は非同期で読み込まれるため voiceschanged を待つ）
@@ -691,10 +675,11 @@
   }
 
   // ============ 状態 ============
-  const SAVE_KEY = "sansuNinjaData";
+  const SAVE_KEY = "tasizanNinjaData";
   let players = loadData().players || [];
   let currentPlayer = null;   // 名前
-  let dan = 1;                // 現在の段 1..9
+  let dan = 1;                // 現在のレベル 1..8
+  let mapFilter = "all";      // マップの フィルタ：all / add / sub
   let stageIdx = 0;           // STAGES のインデックス
   let question = null;
   let lives = PLAYER_LIVES;
@@ -725,7 +710,7 @@
   }
   // タブ間同期（開いている別タブにも即反映）
   let saveChannel = null;
-  try { saveChannel = new BroadcastChannel("sansuNinjaSync"); } catch (e) {}
+  try { saveChannel = new BroadcastChannel("tasizanNinjaSync"); } catch (e) {}
   if (saveChannel) {
     saveChannel.onmessage = (ev) => {
       try {
@@ -761,7 +746,7 @@
   }
   function danProgress(p) {
     const prog = {};
-    for (let d = 1; d <= 9; d++) {
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
       const rec = (p.records[d] || {}).stages || {};
       const done = STAGES.filter(s => rec[s.key]).length;
       prog[d] = done;
@@ -838,19 +823,19 @@
     const s = screens.titleScreen;
     show("titleScreen");
     const masters = [];
-    for (let d = 1; d <= 9; d++) masters.push(`<span class="m" title="${MASTERS[d].name}">${makeNinja(d, 30)}</span>`);
+    for (let d = 1; d <= LEVEL_COUNT; d++) masters.push(`<span class="m" title="${LEVELS[d].name}">${makeNinja(d, 30)}</span>`);
     s.innerHTML = `
       <div class="title-sakura" style="left:8%"></div>
       <div class="title-sakura" style="left:32%; animation-delay:2s"></div>
       <div class="title-sakura" style="left:55%; animation-delay:4s"></div>
       <div class="title-sakura" style="left:78%; animation-delay:1s"></div>
       <div class="title-sakura" style="left:90%; animation-delay:3s"></div>
-      <div class="logo">掛け算忍者<span class="small">〜 九九の巻 〜</span></div>
+      <div class="logo">たしざん・ひきざん忍者<span class="small">〜 れんしゅうの巻 〜</span></div>
       <div class="title-master">🥷</div>
       <div class="master-row">${masters.join("")}</div>
-      <div class="title-tag">くのいち・忍者になって、9人の「先生」をたおそう！</div>
+      <div class="title-tag">くのいち・忍者になって、8つの「レベル」をマスターしよう！</div>
       <button class="btn big" style="margin-top:14px" id="btnStart">修行をはじめる！</button>
-      <div class="version">Sansu Ninja - Kuku no Maki (Web Edition)</div>
+      <div class="version">たしざん・ひきざん忍者 - Web Edition</div>
     `;
     s.querySelector("#btnStart").addEventListener("click", () => { SFX.click(); renderSlots(); });
   }
@@ -961,8 +946,13 @@
         <span style="font-weight:900">${p.name} 🥷</span>
         <button class="btn gold icon" id="btnBackSlot">⬅ もどる</button>
       </div>
-      <div class="screen-title">🍙 九九道場マップ</div>
-      <div class="screen-sub">段の「先生」をたおして、九九をマスターしよう！</div>
+      <div class="screen-title">🍙 けいさん道場マップ</div>
+      <div class="screen-sub">レベルの「先生」をたおして、たしざん・ひきざんをマスターしよう！</div>
+      <div class="filter-bar" id="filterBar">
+        <button class="fbtn" data-f="all">すべて</button>
+        <button class="fbtn" data-f="add">たしざん</button>
+        <button class="fbtn" data-f="sub">ひきざん</button>
+      </div>
       <div class="map-grid" id="mapGrid"></div>
       <div class="footer-nav">
         <button class="btn" id="btnMixNav">🔀 ミックス修行</button>
@@ -971,8 +961,9 @@
       </div>
     `;
     const grid = s.querySelector("#mapGrid");
-    for (let d = 1; d <= 9; d++) {
-      const m = MASTERS[d];
+    const cellEls = {};
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
+      const m = LEVELS[d];
       const done = prog[d];
       const unlocked = isUnlocked(p, d);
       const allDone = done >= STAGES.length;
@@ -984,24 +975,38 @@
         (unlocked && done === 0 ? " current" : "") +
         (!unlocked ? " locked" : "");
       div.innerHTML = `
-        <div class="dan">${d}の段</div>
+        <div class="dan">Lv.${d} ${m.short}</div>
         <div class="emoji">${unlocked ? makeNinja(d, 56) : "🔒"}</div>
         <div class="name">${m.name}</div>
-        <div class="trait">${unlocked ? m.trait : "クリアして解放しよう！"}</div>
+        <div class="trait">${unlocked ? m.label : "クリアして解放しよう！"}</div>
         <div class="medals">${medalStr || ""}</div>
       `;
       if (unlocked) {
         div.addEventListener("click", () => { SFX.click(); dan = d; stageIdx = 0; startStage(); });
       }
       grid.appendChild(div);
+      cellEls[d] = div;
     }
+    function applyFilter() {
+      for (let d = 1; d <= LEVEL_COUNT; d++) {
+        const show = mapFilter === "all" || LEVELS[d].op === mapFilter;
+        cellEls[d].style.display = show ? "" : "none";
+      }
+      s.querySelectorAll(".fbtn").forEach(b => {
+        b.classList.toggle("active", b.dataset.f === mapFilter);
+      });
+    }
+    s.querySelectorAll(".fbtn").forEach(b => {
+      b.addEventListener("click", () => { SFX.click(); mapFilter = b.dataset.f; applyFilter(); });
+    });
+    applyFilter();
     s.querySelector("#btnBackSlot").addEventListener("click", () => { SFX.click(); renderSlots(); });
     s.querySelector("#btnCardsNav2").addEventListener("click", () => { SFX.click(); renderCards(); });
     s.querySelector("#btnRecNav2").addEventListener("click", () => { SFX.click(); renderRecord(); });
     s.querySelector("#btnMixNav").addEventListener("click", () => { SFX.click(); startMix(); });
   }
 
-  // ============ ミックス修行（1〜9の段 まぜこぜ） ============
+  // ============ ミックス修行（すべてのレベル まぜこぜ） ============
   function startMix() {
     stopSpeak();
     show("introScreen");
@@ -1010,8 +1015,8 @@
       <button class="btn icon" id="btnMixBack" style="position:absolute;top:14px;left:14px">◀ もどる</button>
       <div class="master-big">🔀</div>
       <div class="master-name">ミックス修行</div>
-      <div class="stage-badge boss">1〜9の段 まぜこぜ</div>
-      <div class="speech">1の段から9の段まで、ランダムにまぜこぜで出題するぞ！クリアすると「ミックスマスター」カードがもらえる！</div>
+      <div class="stage-badge boss">すべてのレベル まぜこぜ</div>
+      <div class="speech">すべてのレベルを まぜこぜで だすぞ！ クリアすると「ミックスマスター」カードが もらえる！</div>
       <button class="btn big" id="btnStartMix">いくぞ！</button>
     `;
     s.querySelector("#btnStartMix").addEventListener("click", () => { SFX.click(); startBonus(); });
@@ -1021,7 +1026,7 @@
   // ============ ステージ開始（導入） ============
   function startStage() {
     const stage = STAGES[stageIdx];
-    const m = MASTERS[dan];
+    const m = LEVELS[dan];
     stopSpeak();
     show("introScreen");
     const s = screens.introScreen;
@@ -1073,6 +1078,45 @@
     return arr;
   }
 
+  // レベルごとの もんだい 生成
+  function validQ(a, b, op, carry, MAX, correct) {
+    if (a < 0 || b < 0 || correct < 0) return false;
+    if (correct > MAX) return false;
+    if (op === "add") {
+      if ((a % 10) + (b % 10) >= 10) { if (!carry) return false; }
+      else { if (carry) return false; }
+    } else {
+      if (a < b) return false;
+      if ((a % 10) < (b % 10)) { if (!carry) return false; }
+      else { if (carry) return false; }
+    }
+    return true;
+  }
+  function genQuestion(level) {
+    const L = LEVELS[level];
+    const op = L.op, carry = L.carry, MAX = L.max;
+    let a, b, correct, guard = 0;
+    do {
+      if (++guard > 3000) { a = op === "sub" ? 2 : 1; b = 1; break; }
+      if (op === "add") {
+        a = 1 + Math.floor(Math.random() * (MAX <= 20 ? (MAX - 1) : 99));
+        b = 1 + Math.floor(Math.random() * (MAX <= 20 ? (MAX - 1) : 99));
+        correct = a + b;
+      } else {
+        a = 1 + Math.floor(Math.random() * MAX);
+        b = Math.floor(Math.random() * (a + 1));
+        correct = a - b;
+      }
+    } while (!validQ(a, b, op, carry, MAX, correct));
+    return { a, b, op, correct };
+  }
+  function candidatesFor(a, b, op, correct) {
+    if (op === "add") {
+      return [a - b, (a % 10) + (b % 10), a + b + 10, a + b - 10, b, a];
+    }
+    return [a + b, b - a, a - b + 10, a - b - 10, a, b];
+  }
+
   function startQuestion() {
     const stage = STAGES[stageIdx];
     isBonus = false;
@@ -1098,15 +1142,9 @@
       finishStage();
       return;
     }
-    const a = dan;
-    let b;
-    if (stage.mode === "sequence") {
-      b = (answeredInStage % 9) + 1;
-    } else {
-      b = Math.floor(Math.random() * 9) + 1;
-    }
-    const correct = a * b;
-    question = { a, b, correct, choices: genChoices(correct, dan * 9) };
+    const q = genQuestion(dan);
+    q.choices = genChoices(q.correct, LEVELS[dan].max, candidatesFor(q.a, q.b, q.op, q.correct));
+    question = q;
     renderPlay();
   }
 
@@ -1116,18 +1154,19 @@
     show("playScreen");
     const s = screens.playScreen;
     const stage = STAGES[stageIdx] || { key: "bonus", label: "ボーナス" };
-    const m = MASTERS[dan] || { emoji: "🌟", name: "ボーナス", lines: ["ぼーなす！"], bossLines: ["ぼーなす！"] };
+    const m = LEVELS[dan] || { emoji: "🌟", name: "ボーナス", lines: ["ぼーなす！"], bossLines: ["ぼーなす！"] };
     stopSpeak();
-    const enemyEmoji = isBoss ? m.emoji : isBonus ? "🌟" : "👺";
-    const speechText = `${question.a} × ${question.b} は いくつ？`;
+    const enemyEmoji = isBoss ? m.emoji : isBonus ? "🌟" : m.emoji;
+    const sym = question.op === "add" ? "＋" : "－";
+    const speechText = `${question.a} ${sym} ${question.b} は いくつ？`;
     const masterLine = isBonus ? "まぜこぜだぞ！" : (isBoss ? pick(m.bossLines) : pick(m.lines));
     s.innerHTML = `
       ${isBoss ? `<div class="boss-bg"></div>` : ""}
-      <div class="noren">九九道場</div>
+      <div class="noren">けいさん道場</div>
       <div class="lantern" style="left:5%"></div>
       <div class="lantern" style="right:5%; animation-delay:1.2s"></div>
       <div class="topbar">
-        <div class="hud">⚔ ${isBonus ? "ボーナス" : dan + "の段"}</div>
+        <div class="hud">⚔ ${isBonus ? "ボーナス" : "Lv." + dan + " " + m.short}</div>
         <div class="hud">${stage.key === "boss" ? "👹 ボス戦" : isBonus ? "🌟 まぜこぜ" : "🔥 " + stage.label}</div>
         <div class="hud">❤️ <span class="num" id="hudLives">${"♥".repeat(lives)}${"♡".repeat(PLAYER_LIVES - lives)}</span></div>
       </div>
@@ -1135,7 +1174,7 @@
         <div class="battle">
           <div class="fighter left">
             <div class="master-line" id="masterLine">${masterLine}</div>
-            <div class="enemy-emoji ${isBoss ? "bossmode" : ""}" id="enemyEmoji">${isBonus ? "🌟" : makeNinja(dan, isBoss ? 150 : 108)}</div>
+            <div class="enemy-emoji ${isBoss ? "bossmode" : ""}" id="enemyEmoji">${enemyEmoji}</div>
             ${isBoss ? `<div class="boss-hpbar"><div class="fill" id="bossBar"></div></div>` : ""}
           </div>
           <div class="vs">VS</div>
@@ -1162,8 +1201,8 @@
       updateBossBar();
     }
     s.classList.toggle("bossfight", isBoss);
-    // 出題時に九九を読み上げ（問題のみ）
-    speakKuku(question.a, question.b);
+    // 出題時に もんだい を よみあげ（こたえは いわない）
+    speakQ(question.a, question.b, question.op);
   }
 
   function spawnShuriken() {
@@ -1243,12 +1282,12 @@
         updateBossBar();
         setTimeout(() => {
           if (bossHp <= 0) { finishStage(); return; }
-          speakFact(question.a, question.b, goNext);
+          speakFact2(question.a, question.b, question.op, question.correct, goNext);
           setTimeout(goNext, 3000);
         }, 750);
       } else {
         setTimeout(() => {
-          speakFact(question.a, question.b, goNext);
+          speakFact2(question.a, question.b, question.op, question.correct, goNext);
           setTimeout(goNext, 3000);
         }, 650);
       }
@@ -1260,12 +1299,13 @@
       totalWrong++;
       if (rec) rec.wrong++;
       lives--;
-      fb.textContent = "ざんねん… せいかいは " + question.a + " × " + question.b + " ＝ " + question.correct + " だよ";
+      const sym = question.op === "add" ? "＋" : "－";
+      fb.textContent = "ざんねん… せいかいは " + question.a + " " + sym + " " + question.b + " ＝ " + question.correct + " だよ";
       fb.className = "feedback show bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
-      // 正しい九九の読みを聞かせる（間違えた時こそ正しく覚えてほしい／タップ内で再生）
-      speakFact(question.a, question.b);
+      // 正しい こたえ の よみを きかせる（まちがえたときこそ ただしく おぼえてほしい）
+      speakFact2(question.a, question.b, question.op, question.correct);
       // おにぎり学習へ
       setTimeout(() => {
         showLearn();
@@ -1283,76 +1323,83 @@
     stopSpeak();
     show("learnScreen");
     const s = screens.learnScreen;
-    const a = question.a, b = question.b;
+    const a = question.a, b = question.b, op = question.op, correct = question.correct;
+    const sym = op === "add" ? "＋" : "－";
+    const emoji = "🍎";
+    const carry = LEVELS[dan] ? LEVELS[dan].carry : true;
+    const baseGuide = op === "add"
+      ? (carry ? "10こで まとめて くわえよう！ タップして かぞえてね" : "タップして かずを くわえて かぞえよう！")
+      : (carry ? "10こを ほぐして ひこう！ タップして とって かぞえよう！" : "タップして とって かぞえよう！");
     s.innerHTML = `
       <div class="topbar">
         <button class="btn gold icon" id="btnLearnBack">◀ もどる</button>
-        <span style="font-weight:900">🍙 おにぎりでおぼえよう！</span>
+        <span style="font-weight:900">🍎 えんそうで おぼえよう！</span>
       </div>
-      <div class="learn-title">${a} × ${b} はいくつ？</div>
-      <div class="learn-q correct-answer">${a} × ${b} ＝ ${a * b}</div>
-      <div class="learn-guide">せいかいは <b>${a * b}</b> だよ！おにぎりをタップしてかずをかぞえておぼえよう。</div>
-      <div class="onigiri-area" id="ogArea"></div>
+      <div class="learn-title">${a} ${sym} ${b} は いくつ？</div>
+      <div class="learn-q correct-answer" id="learnEq">${a} ${sym} ${b} ＝ ？</div>
+      <div class="learn-guide" id="learnGuide">${baseGuide}</div>
+      <div class="onigiri-area" id="ogArea" style="align-items:center;justify-content:center;flex-direction:row;flex-wrap:wrap;gap:6px;font-size:28px;line-height:1.5;min-height:120px"></div>
       <div class="footer-nav">
-        <button class="btn big" id="btnLearnOk">わかった！もういちど！</button>
+        <button class="btn big" id="btnLearnTap">${op === "add" ? "くわえる！" : "とる！"}</button>
+        <button class="btn gold big" id="btnLearnOk">わかった！もういちど！</button>
       </div>
     `;
     const area = s.querySelector("#ogArea");
-    // bグループ × a個
-    for (let g = 0; g < b; g++) {
-      const grp = document.createElement("div");
-      grp.className = "og-group";
-      grp.innerHTML = `<div class="og-row">${"🍙".repeat(a)}</div><div class="og-count" data-g="${g}"></div>`;
-      area.appendChild(grp);
-    }
-    const groups = area.querySelectorAll(".og-group");
-    let gidx = 0;
-    const stepCount = [];
-    function highlight(i) {
-      for (let k = 0; k < groups.length; k++) {
-        if (k === i) groups[k].classList.add("hl");
-        else groups[k].classList.remove("hl");
+    const eq = s.querySelector("#learnEq");
+    const guide = s.querySelector("#learnGuide");
+    const total = op === "add" ? a + b : a;
+    const objs = [];
+    for (let i = 0; i < total; i++) {
+      const sp = document.createElement("span");
+      sp.textContent = emoji;
+      sp.style.transition = "transform .12s, opacity .2s";
+      area.appendChild(sp);
+      objs.push(sp);
+      if (op === "add" && i === a - 1 && b > 0) {
+        const plus = document.createElement("span");
+        plus.textContent = "＋";
+        plus.style.cssText = "font-size:26px;color:var(--red);font-weight:900;margin:0 2px";
+        area.appendChild(plus);
       }
-      if (groups[i].scrollIntoView) groups[i].scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    groups.forEach((grp, i) => {
-      grp.addEventListener("click", () => {
-        if (i !== gidx) { highlight(gidx); return; }
-        SFX.click();
-        const val = a * (i + 1);
-        const cnt = grp.querySelector(".og-count");
-        cnt.textContent = "＝ " + val;
-        // ポップ
-        grp.querySelectorAll(".og").forEach((el, j) => {
-          setTimeout(() => { el.style.transform = "scale(1.4)"; }, j * 40);
-          setTimeout(() => { el.style.transform = ""; }, j * 40 + 250);
-        });
-        gidx = i + 1;
-        if (gidx < groups.length) {
-          setTimeout(() => highlight(gidx), 500);
-        } else {
-          setTimeout(() => {
-            groups[gidx - 1].querySelector(".og-count").textContent = "＝ " + (a * b) + "（せいかい！）";
-            groups[gidx - 1].classList.add("hl");
-            SFX.correct();
-          }, 300);
-        }
+    let cur = op === "add" ? 0 : a;
+    function render() {
+      objs.forEach((sp, i) => {
+        const on = op === "add" ? i < cur : i < cur;
+        sp.style.opacity = on ? "1" : "0.22";
+        sp.style.transform = on ? "scale(1)" : "scale(0.82)";
       });
+      eq.textContent = `${a} ${sym} ${b} ＝ ${cur === correct ? correct + " 🎉" : "?"}`;
+    }
+    render();
+    let done = false;
+    s.querySelector("#btnLearnTap").addEventListener("click", () => {
+      if (done) return;
+      SFX.click();
+      if (op === "add") { if (cur < correct) cur++; } else { if (cur > correct) cur--; }
+      render();
+      if (cur >= 0 && cur <= 20) speak(numToKana(cur));
+      if (cur === correct) {
+        done = true;
+        SFX.correct();
+        guide.textContent = "せいかいは " + correct + " だよ！ よくできたね！";
+        speakFact2(a, b, op, correct);
+      }
     });
-    highlight(0);
     s.querySelector("#btnLearnOk").addEventListener("click", () => {
       SFX.click();
       if (lives <= 0) { showGameOver(); } else { retrySameQuestion(); }
     });
     s.querySelector("#btnLearnBack").addEventListener("click", () => {
       SFX.click();
-      // ステージ中断 → マップへ
       showMapQuit();
     });
   }
   function retrySameQuestion() {
     // 同じ問題を再出題（選択肢シャッフル）
-    question = { a: question.a, b: question.b, correct: question.correct, choices: genChoices(question.correct, dan * 9) };
+    const q = { a: question.a, b: question.b, op: question.op, correct: question.correct };
+    q.choices = genChoices(q.correct, LEVELS[dan].max, candidatesFor(q.a, q.b, q.op, q.correct));
+    question = q;
     renderPlay();
   }
   function showGameOver() {
@@ -1362,7 +1409,7 @@
     s.innerHTML = `
       <div class="gameover-emoji">💦</div>
       <div class="gameover-title">ざんねん… ハートがきれちゃった！</div>
-      <div class="gameover-sub">かんばって九九をおぼえよう。もういちど ちょうせん！</div>
+      <div class="gameover-sub">かんばって たしざん・ひきざんを おぼえよう。もういちど ちょうせん！</div>
       <div class="footer-nav" style="position:static;margin-top:14px">
         <button class="btn big" id="btnGoMap">もどる</button>
       </div>
@@ -1379,7 +1426,7 @@
     stopSpeak();
     const p = ensurePlayer(currentPlayer);
     const stage = STAGES[stageIdx];
-    const m = MASTERS[dan];
+    const m = LEVELS[dan];
     const rec = p.records[dan] = p.records[dan] || { correct: 0, wrong: 0, stages: {}, medals: [] };
     // ステージクリア記録
     rec.stages[stage.key] = true;
@@ -1392,7 +1439,7 @@
       if (rec.medals.length > 3) rec.medals.shift();
     }
 
-    // カード獲得：その段の「修行＋実践×2」をクリアすればボス抜きでもゲット！
+    // カード獲得：そのレベルの「修行＋実践×2」をクリアすればボス抜きでもゲット！
     const recStages = (p.records[dan] && p.records[dan].stages) || {};
     const nonBoss = STAGES.filter(s => s.key !== "boss");
     const doneNonBoss = nonBoss.every(s => recStages[s.key]);
@@ -1405,16 +1452,17 @@
     }
     saveData();
 
-    // 段完了後、ボーナスチェック
-    const allCleared = danProgress(p)[1] >= 4 && danProgress(p)[2] >= 4 && danProgress(p)[3] >= 4 &&
-      danProgress(p)[4] >= 4 && danProgress(p)[5] >= 4 && danProgress(p)[6] >= 4 &&
-      danProgress(p)[7] >= 4 && danProgress(p)[8] >= 4 && danProgress(p)[9] >= 4;
+    // レベル完了後、ボーナスチェック
+    let allCleared = true;
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
+      if (danProgress(p)[d] < STAGES.length) { allCleared = false; break; }
+    }
 
     show("clearScreen");
     const s = screens.clearScreen;
     s.innerHTML = `
       <div class="clear-emoji">${isComplete ? "🏆" : "🎉"}</div>
-      <div class="clear-title">${isComplete ? dan + "の段 クリア！" : stage.label + " クリア！"}</div>
+      <div class="clear-title">${isComplete ? dan + "レベル クリア！" : stage.label + " クリア！"}</div>
       ${isComplete ? `<div class="card-reward ${newCard ? "" : "hidden"}">
           <div class="c-emoji">${newCard ? makeNinja(newCard.dan, 70) : ""}</div>
           <div>
@@ -1453,7 +1501,7 @@
 
     const btn = s.querySelector("#btnNext");
     if (isComplete) {
-      btn.textContent = allCleared ? "ミックス修行へ！" : "つぎの段へ！";
+      btn.textContent = allCleared ? "ミックス修行へ！" : "つぎのレベルへ！";
     } else if (stageIdx < 3) {
       btn.textContent = "つぎのステージへ！";
     } else {
@@ -1465,7 +1513,7 @@
         if (allCleared) { showBonus(); return; }
         stageIdx = 0;
         dan++;
-        if (dan > 9) { showBonus(); return; }
+        if (dan > LEVEL_COUNT) { showBonus(); return; }
         startStage();
       } else {
         stageIdx++;
@@ -1482,8 +1530,8 @@
     s.innerHTML = `
       <div class="bonus-emoji">🌟</div>
       <div class="clear-title">ミックス修行！</div>
-      <div class="speech">ぜんぶの段をマスターした、真の掛け算忍者だ！<br>ミックス修行で、むちゃくちゃむずかしい九九にちょうせん！</div>
-      <div class="stage-badge boss" style="margin:6px 0">ランダムの段・まぜこぜ出題</div>
+      <div class="speech">ぜんぶのレベルを マスターした、真のけいさん忍者だ！<br>ミックス修行で、むちゃくちゃ むずかしい けいさんに ちょうせん！</div>
+      <div class="stage-badge boss" style="margin:6px 0">ランダム・まぜこぜ出題</div>
       <div class="footer-nav" style="position:static;margin-top:10px">
         <button class="btn big gold" id="btnBonusGo">ちょうせん！</button>
         <button class="btn" id="btnBonusBack">◀ もどる</button>
@@ -1514,10 +1562,10 @@
       finishBonus();
       return;
     }
-    const a = Math.floor(Math.random() * 9) + 1;
-    const b = Math.floor(Math.random() * 9) + 1;
-    const correct = a * b;
-    question = { a, b, correct, choices: genChoices(correct, 81) };
+    const lv = 1 + Math.floor(Math.random() * LEVEL_COUNT);
+    const q = genQuestion(lv);
+    q.choices = genChoices(q.correct, 100, candidatesFor(q.a, q.b, q.op, q.correct));
+    question = q;
     renderPlay();
   }
 
@@ -1544,7 +1592,7 @@
       </div>
       ${complete ? `<div class="card-reward">
         <div class="c-emoji">👑</div>
-        <div class="c-name">真の掛け算忍者 ジョウ</div>
+        <div class="c-name">真のけいさん忍者 ジョウ</div>
         <div class="c-new">${gotLegend ? "NEW!" : "伝説！"}</div>
       </div>` : ""}
       <div class="footer-nav">
@@ -1575,15 +1623,15 @@
     `;
     const grid = s.querySelector("#cardGrid");
     const p = ensurePlayer(currentPlayer);
-    for (let d = 1; d <= 9; d++) {
-      const m = MASTERS[d];
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
+      const m = LEVELS[d];
       const got = !!p.cards[d];
       const div = document.createElement("div");
       div.className = "card-item" + (got ? " got" : " ng");
       div.innerHTML = `
           <div class="c-emoji">${got ? makeNinja(d, 60) : "❓"}</div>
         <div class="c-name">${got ? m.name : "？？？"}</div>
-        <div style="font-size:11px;color:#9a7a5a">${d}の段</div>
+        <div style="font-size:11px;color:#9a7a5a">Lv.${d}</div>
       `;
       div.addEventListener("click", () => { SFX.click(); showCardDetail(d); });
       grid.appendChild(div);
@@ -1593,7 +1641,7 @@
     legend.className = "card-item" + (p.cards["legend"] ? " got" : " ng");
     legend.innerHTML = `
       <div class="c-emoji">${p.cards["legend"] ? "👑" : "❓"}</div>
-      <div class="c-name">${p.cards["legend"] ? "真の掛け算忍者ジョウ" : "？？？"}</div>
+      <div class="c-name">${p.cards["legend"] ? "真のけいさん忍者ジョウ" : "？？？"}</div>
       <div style="font-size:11px;color:#9a7a5a">伝説</div>
     `;
     legend.addEventListener("click", () => { SFX.click(); showCardDetail("legend"); });
@@ -1621,25 +1669,25 @@
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">🌀</div>
         <div class="modal-name">${got ? "ミックスマスター" : "？？？"}</div>
-        <div class="modal-trait">${got ? "ミックス修行をクリアした、あらゆる九九を使いこなす伝説の忍者" : "ミックス修行をクリアすると解放！"}</div>
+        <div class="modal-trait">${got ? "ミックス修行をクリアした、あらゆるけいさんを つかいこなす伝説の忍者" : "ミックス修行をクリアすると解放！"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
     } else if (key === "legend") {
       const got = !!p.cards["legend"];
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">👑</div>
-        <div class="modal-name">${got ? "真の掛け算忍者ジョウ" : "？？？"}</div>
-        <div class="modal-trait">${got ? "すべての段をマスターした伝説の忍者" : "9つの段をすべてクリアで解放"}</div>
+        <div class="modal-name">${got ? "真のけいさん忍者ジョウ" : "？？？"}</div>
+        <div class="modal-trait">${got ? "すべてのレベルをマスターした伝説の忍者" : "8つのレベルをすべてクリアで解放"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
     } else {
       const d = key;
-      const m = MASTERS[d];
+      const m = LEVELS[d];
       const got = !!p.cards[d];
       const line = (m.lines && m.lines[0]) || m.intro || "";
       body.innerHTML = `
         <div class="modal-emoji">${got ? makeNinja(d, 80) : "❓"}</div>
-        <div class="modal-name">${got ? m.name : "？？？"}（${d}の段）</div>
+        <div class="modal-name">${got ? m.name : "？？？"}（Lv.${d}）</div>
         <div class="modal-trait">${got ? m.trait : "この先生をたおすとカードをゲットできるよ！"}</div>
         <div class="modal-line">${got ? "「" + line + "」" : "修行・実践をクリアして仲間にしよう"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
@@ -1672,7 +1720,7 @@
 
     // 苦手な段の判定（不正解率が高い）
     let worst = null, worstRate = -1;
-    for (let d = 1; d <= 9; d++) {
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
       const r = p.records[d];
       if (!r) continue;
       const total = r.correct + r.wrong;
@@ -1683,13 +1731,13 @@
     if (worst) {
       const note = document.createElement("div");
       note.className = "weak-note";
-      note.textContent = "⚠ がんばりどころ： " + worst + "の段（" + MASTERS[worst].name + "）";
+      note.textContent = "⚠ がんばりどころ： Lv." + worst + " " + LEVELS[worst].label + "（" + LEVELS[worst].name + "）";
       wrap.appendChild(note);
     }
     let totalC = 0, totalW = 0;
-    for (let d = 1; d <= 9; d++) {
+    for (let d = 1; d <= LEVEL_COUNT; d++) {
       const r = p.records[d];
-      const m = MASTERS[d];
+      const m = LEVELS[d];
       const done = (r && r.stages) ? STAGES.filter(st => r.stages[st.key]).length : 0;
       const medals = (r && r.medals) || [];
       const c = (r && r.correct) || 0;
@@ -1700,7 +1748,7 @@
       const maxBar = Math.max(c + w, 1);
       card.innerHTML = `
         <div class="row-head">
-          <span class="dan-name">${makeNinja(d, 30)} ${d}の段 ${m.name}</span>
+          <span class="dan-name">${makeNinja(d, 30)} Lv.${d} ${m.name}</span>
           <span class="medals">${medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("")}${done >= 4 ? "🏆" : " (" + done + "/4)"}</span>
         </div>
         <div class="bars">
