@@ -36,10 +36,10 @@
     z-index: 10;
     padding: 0 6vw;
   }
-  #overlay h1 { font-size: 8vw; margin-bottom: 12px; letter-spacing: 2px; }
-  #overlay p { font-size: 3.4vw; opacity: 0.85; margin-bottom: 24px; line-height: 1.7; }
+  #overlay h1 { font-size: clamp(22px, 8vw, 52px); margin-bottom: 12px; letter-spacing: 2px; }
+  #overlay p { font-size: clamp(13px, 3.4vw, 19px); opacity: 0.85; margin-bottom: 24px; line-height: 1.7; max-width: 640px; }
   #btn {
-    font-size: 5vw; padding: 14px 40px;
+    font-size: clamp(16px, 5vw, 24px); padding: 14px 40px;
     background: linear-gradient(135deg,#4a8cff,#7d5bff);
     color: #fff; border: none; border-radius: 999px;
     cursor: pointer; font-weight: 700;
@@ -56,10 +56,11 @@
 
 <div id="overlay">
   <h1>アルカノイド風</h1>
-  <p>Vaus（パドル）を動かしてエネルギーボルトを跳ね返し、全ブロックを破壊せよ<br>
+  <p>Vaus（パドル）を動かしてエネルギーボルトを跳ね返し、全10ステージをクリアせよ<br>
   Mac: マウス移動 / ←→ / スペースで発射・レーザー<br>
   Android: 指でスライド / タップで発射・レーザー<br>
-  カプセル E拡大 C捕獲 D分裂 Lレーザー S減速 P命 Bワープ</p>
+  カプセル E拡大 C捕獲 D分裂 Lレーザー S減速 P命 Bワープ<br>
+  ライフが尽きてもコンティニューが3回使えます</p>
   <button id="btn">スタート</button>
 </div>
 
@@ -145,7 +146,7 @@
   resize();
 
   // ---- ゲーム状態 ----
-  const BOSS_LEVEL = 5;          // 0..4 通常、5 がボス
+  const BOSS_LEVEL = 9;          // 0..8 通常、9 がボス（全10ステージ）
   const palettes = [
     ["#ff5d73", "#ffa14a", "#ffd24a", "#5dff9b", "#4ad6ff"],
     ["#ff6ec7", "#b06bff", "#6b8bff", "#6bffe0", "#c7ff6b"],
@@ -162,10 +163,12 @@
   };
 
   let paddle, balls, bricks, capsules, lasers, particles, boss;
-  let score, lives, level, running, gameOver, won;
+  let score, lives, continues, level, running, gameOver, won;
   let keyLeft = false, keyRight = false;
   let laserActive = false, catchActive = false;
   let fireCooldown = 0;
+  let overlayAction = startGame;
+  let banner = 0, bannerText = "";
 
   function newBall(stuck) {
     return {
@@ -178,7 +181,7 @@
     };
   }
 
-  function ballSpeed() { return H * (0.014 + level * 0.0016); }
+  function ballSpeed() { return H * (0.0072 + level * 0.0009); }
 
   function releaseBall(b) {
     const speed = ballSpeed();
@@ -230,8 +233,10 @@
         if (skipPattern(lv, r, c, rows, cols)) continue;
         let type = "normal";
         const rnd = Math.random();
-        if (rnd < 0.06) type = "steel";
-        else if (rnd < 0.18) type = "metal";
+        const steelCh = Math.min(0.03 + level * 0.012, 0.16);
+        const metalCh = Math.min(0.08 + level * 0.012, 0.28);
+        if (rnd < steelCh) type = "steel";
+        else if (rnd < steelCh + metalCh) type = "metal";
         arr.push({
           x: side + c * (bw + gap), y: top + r * (bh + gap), w: bw, h: bh,
           color: type === "steel" ? "#7e8595" : (type === "metal" ? "#cdd6e6" : palette[r % palette.length]),
@@ -256,11 +261,12 @@
 
   function startGame() {
     initAudio();
-    score = 0; lives = 3; level = 0; won = false; gameOver = false;
+    score = 0; lives = 3; continues = 3; level = 0; won = false; gameOver = false;
     paddle = { x: 0, y: 0, w: 0, h: 0, baseW: W * 0.18 };
     paddle.w = paddle.baseW;
     buildLevel();
     resetBall();
+    banner = 90; bannerText = "STAGE 1";
     running = true;
     overlay.classList.add("hidden");
     last = 0;
@@ -350,6 +356,21 @@
     level++;
     buildLevel();
     newLevelBall();
+    banner = 90;
+    bannerText = boss ? "FINAL BOSS" : "STAGE " + (level + 1);
+  }
+
+  function continueGame() {
+    continues--;
+    lives = 3;
+    paddle.w = paddle.baseW;
+    laserActive = false; catchActive = false;
+    balls = [newBall(true)];
+    banner = 70; bannerText = "CONTINUE";
+    running = true;
+    overlay.classList.add("hidden");
+    last = 0;
+    requestAnimationFrame(loop);
   }
 
   function update(dt) {
@@ -432,7 +453,7 @@
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
             running = false; won = true;
-            showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
+            overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
             return;
           }
         }
@@ -445,8 +466,15 @@
       lives--;
       sfx.lose();
       if (lives <= 0) {
-        running = false; gameOver = true;
-        showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
+        if (continues > 0) {
+          running = false;
+          overlayAction = continueGame;
+          showOverlay("コンティニューしますか？", "残りコンティニュー: " + continues + " 回<br>スコア: " + score, "コンティニュー");
+        } else {
+          running = false; gameOver = true;
+          overlayAction = startGame;
+          showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
+        }
         return;
       }
       resetBall();
@@ -490,7 +518,7 @@
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
             running = false; won = true;
-            showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
+            overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
             return;
           }
         }
@@ -630,7 +658,18 @@
     ctx.textAlign = "left";
     ctx.fillText("SCORE " + score, W * 0.04, H * 0.055);
     ctx.textAlign = "right";
-    ctx.fillText((boss ? "BOSS" : "LV " + (level + 1)) + "   ♥" + lives, W * 0.96, H * 0.055);
+    ctx.fillText((boss ? "BOSS" : "LV " + (level + 1)) + "   ♥" + lives + "  C" + continues, W * 0.96, H * 0.055);
+
+    // ステージバナー
+    if (banner > 0) {
+      ctx.globalAlpha = Math.min(1, banner / 25);
+      ctx.fillStyle = "#eaf0ff";
+      ctx.textAlign = "center";
+      ctx.font = "bold " + Math.round(H * 0.06) + "px sans-serif";
+      ctx.fillText(bannerText, W / 2, H * 0.42);
+      ctx.globalAlpha = 1;
+      banner -= 1;
+    }
 
     // 発射ヒント
     if (running && balls.some(b => b.stuck)) {
@@ -690,7 +729,7 @@
     if (e.key === "ArrowLeft")  keyLeft = false;
     if (e.key === "ArrowRight") keyRight = false;
   });
-  btn.addEventListener("click", startGame);
+  btn.addEventListener("click", () => { if (overlayAction) overlayAction(); });
 
   // 背景だけ描画
   draw();
