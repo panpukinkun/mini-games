@@ -197,7 +197,18 @@
   .feedback.show { animation: feedbackpop 0.7s forwards; }
   @keyframes feedbackpop { 0% { transform: translate(-50%,-50%) scale(0.6); opacity: 1; } 60% { transform: translate(-50%,-58%) scale(1.05); opacity: 1; } 100% { transform: translate(-50%,-78%) scale(1); opacity: 0; } }
   .feedback.good { color: var(--gold); }
-  .feedback.bad { color: var(--red); }
+  .feedback.bad {
+    color: #b71c1c; background: #fff; border: 4px solid var(--red);
+    border-radius: 18px; padding: 14px 18px; font-size: 26px;
+    box-shadow: 0 6px 0 rgba(183,28,28,0.22), 0 10px 22px rgba(0,0,0,0.28);
+    white-space: normal; line-height: 1.4; max-width: 92vw;
+    animation: feedbackbad 0.35s forwards;
+  }
+  @keyframes feedbackbad {
+    0% { transform: translate(-50%,-50%) scale(0.5); opacity: 0; }
+    70% { transform: translate(-50%,-50%) scale(1.05); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  }
   .combo-float { position: absolute; top: 16%; left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 900; color: var(--gold); z-index: 9; pointer-events: none; text-shadow: 0 2px 0 rgba(0,0,0,0.2); }
 
   /* ---- おにぎり学習 ---- */
@@ -301,6 +312,9 @@
     content: ""; position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
     border: 9px solid transparent; border-bottom-color: var(--gold);
   }
+  #qSpeech { cursor: pointer; user-select: none; touch-action: manipulation; }
+  .master-speech .spk { font-size: 20px; vertical-align: middle; margin-left: 6px; display: inline-block; animation: spkpulse 1.5s infinite ease-in-out; }
+  @keyframes spkpulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } }
   /* 手裏剣飛行エフェクト */
   .shuriken-fly {
     position: absolute; font-size: 42px; z-index: 30; pointer-events: none;
@@ -518,18 +532,19 @@
   // 九九の読み方（童謡風・連声込みの正しい暗唱。出典：童謡童話王国「九九の歌」/ 山野さと子「99のうた」/ ACTABA）
   // KUKU[a][b] = a×b の暗唱。正統な九九のうたの流し方では、答えが1桁(1〜9)のときだけ「が」を入れ、答えが2桁以上（「じゅう」を含む）のときは入れない。
   // ===== よみあげ（たしざん・ひきざん）=====
-  const KANA = ["", "いち", "に", "さん", "し", "ご", "ろく", "しち", "はち", "く", "じゅう"];
+  const KANA = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう", "じゅう"];
   function numToKana(n) {
     if (n === 0) return "ぜろ";
-    if (n <= 10) return KANA[n];
     if (n === 100) return "ひゃく";
+    if (n <= 10) return KANA[n];
     const t = Math.floor(n / 10), o = n % 10;
-    return (t === 1 ? "じゅう" : KANA[t] + "じゅう") + (o > 0 ? KANA[o] : "");
+    const TEN = ["", "じゅう", "にじゅう", "さんじゅう", "よんじゅう", "ごじゅう", "ろくじゅう", "ななじゅう", "はちじゅう", "きゅうじゅう"];
+    return TEN[t] + (o > 0 ? KANA[o] : "");
   }
   const OP_KANA = { add: "たす", sub: "ひく" };
   // 出題時：問題だけ読み上げ（答えは言わない）
   function qText(a, b, op) {
-    return numToKana(a) + " " + OP_KANA[op] + " " + numToKana(b) + " は";
+    return numToKana(a) + " " + OP_KANA[op] + " " + numToKana(b) + " は いくつ？";
   }
   // 正解・誤答時：正答ごと読み上げ
   function factText(a, b, op, correct) {
@@ -872,12 +887,12 @@
       div.className = "slot" + (p ? "" : " empty");
       if (p) {
         const prog = danProgress(p);
-        const clearCount = Object.keys(p.cards).length;
+        const clearCount = Object.keys(p.cards).filter(k => k !== "legend").length;
         div.innerHTML = `
           <div class="avatar">${AVATARS[i % AVATARS.length]}</div>
           <div class="meta">
             <div class="name">${p.name}</div>
-            <div class="info">カード ${clearCount}/9 ・ ${prog[1]>=4?"1段◎":""}${prog[2]>=4?"2段◎":""}${prog[3]>=4?"3段◎":""}</div>
+            <div class="info">カード ${clearCount}/9 ・ ${prog[1]>=4?"Lv1◎":""}${prog[2]>=4?"Lv2◎":""}${prog[3]>=4?"Lv3◎":""}</div>
           </div>
           <button class="delete" data-del="${i}">✕</button>
         `;
@@ -1182,7 +1197,7 @@
             <div class="hero-emoji">${HERO_SVG}</div>
           </div>
         </div>
-        <div class="master-speech" id="qSpeech">${speechText}</div>
+        <div class="master-speech" id="qSpeech">${speechText}<span class="spk" aria-hidden="true">🔊</span></div>
       </div>
       <div class="feedback" id="feedback"></div>
       <div class="choice-pad" id="choicePad">
@@ -1197,6 +1212,9 @@
     s.querySelectorAll(".choice").forEach(b => {
       b.addEventListener("click", () => answer(+b.dataset.idx, b));
     });
+    // もんだいぶんを タップで もういちど よみあげ（ききのがしたときの よゆう）
+    const qs = s.querySelector("#qSpeech");
+    if (qs) qs.addEventListener("click", () => { SFX.click(); speakQ(question.a, question.b, question.op); });
     if (isBoss) {
       updateBossBar();
     }
@@ -1301,15 +1319,15 @@
       lives--;
       const sym = question.op === "add" ? "＋" : "－";
       fb.textContent = "ざんねん… せいかいは " + question.a + " " + sym + " " + question.b + " ＝ " + question.correct + " だよ";
-      fb.className = "feedback show bad";
+      fb.className = "feedback bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
       // 正しい こたえ の よみを きかせる（まちがえたときこそ ただしく おぼえてほしい）
       speakFact2(question.a, question.b, question.op, question.correct);
-      // おにぎり学習へ
-      setTimeout(() => {
-        showLearn();
-      }, 900);
+       // おにぎり学習へ（せいかいを よく みえるように じかんを のばす）
+       setTimeout(() => {
+         showLearn();
+       }, 1600);
     }
   }
   function sLock() { }
@@ -1398,7 +1416,8 @@
   function retrySameQuestion() {
     // 同じ問題を再出題（選択肢シャッフル）
     const q = { a: question.a, b: question.b, op: question.op, correct: question.correct };
-    q.choices = genChoices(q.correct, LEVELS[dan].max, candidatesFor(q.a, q.b, q.op, q.correct));
+    const maxVal = isBonus ? 100 : LEVELS[dan].max;
+    q.choices = genChoices(q.correct, maxVal, candidatesFor(q.a, q.b, q.op, q.correct));
     question = q;
     renderPlay();
   }
@@ -1453,9 +1472,10 @@
     saveData();
 
     // レベル完了後、ボーナスチェック
+    const progAll = danProgress(p);
     let allCleared = true;
     for (let d = 1; d <= LEVEL_COUNT; d++) {
-      if (danProgress(p)[d] < STAGES.length) { allCleared = false; break; }
+      if (progAll[d] < STAGES.length) { allCleared = false; break; }
     }
 
     show("clearScreen");
@@ -1615,7 +1635,7 @@
         <span style="font-weight:900">🎴 カードコレクション</span>
         <button class="btn gold icon" id="btnCardsBack">◀ もどる</button>
       </div>
-        <div class="screen-sub">先生カードは段クリア、ミックスカードはミックス修行クリアでゲット！</div>
+        <div class="screen-sub">レベルカードはレベルクリア、ミックスカードはミックス修行クリアでゲット！</div>
       <div class="card-grid" id="cardGrid"></div>
       <div class="footer-nav">
         <button class="btn" id="btnCardHome">🏠 ホーム</button>
@@ -1688,7 +1708,7 @@
       body.innerHTML = `
         <div class="modal-emoji">${got ? makeNinja(d, 80) : "❓"}</div>
         <div class="modal-name">${got ? m.name : "？？？"}（Lv.${d}）</div>
-        <div class="modal-trait">${got ? m.trait : "この先生をたおすとカードをゲットできるよ！"}</div>
+        <div class="modal-trait">${got ? m.trait : "このレベルをクリアするとカードをゲットできるよ！"}</div>
         <div class="modal-line">${got ? "「" + line + "」" : "修行・実践をクリアして仲間にしよう"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
