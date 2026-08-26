@@ -3,55 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ゲームメニュー</title>
+<title>ゲーム館</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
-    width: 100%; height: 100%;
-    background: #0a0e27;
+    width: 100%; min-height: 100%;
+    background: radial-gradient(circle at 50% 0%, #1b2a5a 0%, #0a0e27 60%);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: #eaf0ff; overflow-y: auto;
-    display: flex; align-items: center; justify-content: center;
+    color: #eaf0ff;
+    -webkit-user-select: none; user-select: none;
+    padding: 6vw 4vw 10vw;
   }
-  .menu { text-align: center; padding: 6vw; max-width: 560px; }
-  h1 { font-size: 8vw; margin-bottom: 6vw; letter-spacing: 2px; }
-  a.play {
-    display: block; width: 80%; max-width: 420px; margin: 4vw auto;
-    padding: 5vw; font-size: 5vw; font-weight: 700; text-decoration: none;
-    color: #fff; border-radius: 999px;
-    box-shadow: 0 6px 20px rgba(74,140,255,0.35);
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 7vw; }
+  header h1 { font-size: 9vw; letter-spacing: 2px; text-shadow: 0 3px 0 rgba(74,140,255,0.5); }
+  header p { font-size: 3.6vw; opacity: 0.8; margin-top: 2vw; }
+
+  .grid { display: grid; grid-template-columns: 1fr; gap: 5vw; }
+  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+  .card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(120,160,255,0.25);
+    border-radius: 22px; padding: 6vw 5vw;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .card:hover { transform: translateY(-4px); border-color: rgba(120,160,255,0.6); }
+  .icon { font-size: 16vw; line-height: 1; margin-bottom: 3vw; }
+  @media (min-width: 640px) { .icon { font-size: 84px; } }
+  .card h2 { font-size: 5.5vw; margin-bottom: 2vw; }
+  @media (min-width: 640px) { .card h2 { font-size: 26px; } }
+  .desc { font-size: 3.4vw; opacity: 0.82; line-height: 1.6; margin-bottom: 4vw; }
+  @media (min-width: 640px) { .desc { font-size: 14px; } }
+  .play {
+    display: inline-block; text-decoration: none;
+    padding: 3.2vw 10vw; font-size: 4.6vw; font-weight: 700; color: #fff;
+    border-radius: 999px;
+    box-shadow: 0 6px 18px rgba(74,140,255,0.4);
     background: linear-gradient(135deg,#4a8cff,#7d5bff);
   }
-  a.play:active { transform: scale(0.97); }
-  .qr-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 6vw; }
-  .qr { background: #fff; border-radius: 14px; padding: 8px; }
-  .qr img { display: block; width: 34vw; max-width: 160px; height: auto; }
-  .qr .cap { color: #0a0e27; font-size: 3.4vw; font-weight: 700; margin-top: 4px; }
-  .note { font-size: 3.2vw; opacity: 0.7; margin-top: 6vw; line-height: 1.6; }
-  .url { font-size: 3.4vw; word-break: break-all; opacity: 0.85; }
+  .play:active { transform: scale(0.96); }
+  .qr { margin-top: 4vw; background: #fff; border-radius: 14px; padding: 8px; }
+  .qr img { display: block; width: 32vw; max-width: 140px; height: auto; }
+  .qr .cap { color: #0a0e27; font-size: 3vw; font-weight: 700; margin-top: 4px; }
+
+  footer { text-align: center; margin-top: 8vw; font-size: 3vw; opacity: 0.7; line-height: 1.7; }
+  @media (min-width: 640px) { footer { font-size: 13px; } }
 </style>
 </head>
 <body>
-  <div class="menu">
-    <h1>ゲーム館</h1>
-    <a class="play" href="arkanoid/">🧱 アルカノイド風</a>
-    <a class="play" href="kakezan/">⭐ 算数忍者（かけ算）</a>
+  <div class="wrap">
+    <header>
+      <h1>🎮 ゲーム館</h1>
+      <p>URLを知っている人だけが遊べる限定公開サイト</p>
+    </header>
 
-    <div class="qr-row">
-      <div class="qr">
-        <img src="assets/qr_arkanoid.png" alt="arkanoid qr">
-        <div class="cap">アルカノイド</div>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">🧱</div>
+        <h2>アルカノイド風</h2>
+        <div class="desc">パドルでボールを跳ね返し、全ブロックを崩そう。<br>カプセルで拡大・レーザー・分裂などのパワーアップ。</div>
+        <a class="play" href="arkanoid/">遊ぶ</a>
+        <div class="qr"><img src="assets/qr_arkanoid.png" alt="arkanoid qr"><div class="cap">スマホで読み取り</div></div>
       </div>
-      <div class="qr">
-        <img src="assets/qr_kakezan.png" alt="kakezan qr">
-        <div class="cap">算数忍者</div>
+
+      <div class="card">
+        <div class="icon">⭐</div>
+        <h2>算数忍者（かけ算）</h2>
+        <div class="desc">九九をマスターする忍者修行ゲーム。<br>9段の先生に勝ってカードを集めよう。</div>
+        <a class="play" href="kakezan/">遊ぶ</a>
+        <div class="qr"><img src="assets/qr_kakezan.png" alt="kakezan qr"><div class="cap">スマホで読み取り</div></div>
       </div>
     </div>
 
-    <p class="url">https://mkjc1123.github.io/mini-games/arkanoid/<br>https://mkjc1123.github.io/mini-games/kakezan/</p>
-    <p class="note">共有方法：この2つのURLをそのまま送るか、上のQRをスマホで読み取ってください。<br>
-    IP入力やパスワードは不要です。URLを知っている人だけが開けます（限定公開）。<br>
-    GitHub Pages で公開中のため、あなたの Mac に接続せずに複数人で同時に遊べます。</p>
+    <footer>
+      https://panpukinkun.github.io/mini-games/arkanoid/<br>
+      https://panpukinkun.github.io/mini-games/kakezan/<br>
+      ※ IP入力・パスワード不要。GitHub Pages で公開中のため、あなたの Mac に接続せずに複数人で同時に遊べます。
+    </footer>
   </div>
 </body>
 </html>
