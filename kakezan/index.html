@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+  <title>算数忍者 〜九九の巻〜</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+  :root {
+    --ink: #2b2b2b;
+    --paper: #f5ecd9;
+    --red: #d64541;
+    --red-dark: #a93226;
+    --gold: #f4c430;
+    --gold-light: #fdebd0;
+    --cream: #fff8ec;
+    --sky: #7ec8e3;
+    --green: #52b788;
+    --blue: #5dade2;
+    --line: #b89b6e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%;
+    background: linear-gradient(180deg, #fdebd0 0%, #fdf2e3 40%, #fdebd0 100%);
+    font-family: 'M PLUS Rounded 1c', 'Hiragino Maru Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+    overflow: hidden;
+    color: var(--ink);
+    -webkit-user-select: none; user-select: none;
+  }
+  #app {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .screen {
+    width: 100%; max-width: 860px; height: 100%; max-height: 1100px;
+    display: none; flex-direction: column;
+    position: relative; overflow: hidden;
+    background: linear-gradient(180deg, #ffe9c9 0%, #fff8ec 55%, #eaf6ff 100%);
+    border-radius: 0;
+  }
+  .screen.active { display: flex; }
+  @media (min-width: 700px) and (min-height: 600px) {
+    .screen { border-radius: 28px; box-shadow: 0 10px 40px rgba(120, 70, 20, 0.25); }
+    #app { padding: 12px; }
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; gap: 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.4));
+    border-bottom: 2px dashed rgba(214, 69, 65, 0.25);
+    z-index: 5;
+  }
+  .topbar .hud {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; border: 2px solid rgba(214,69,65,0.25);
+    border-radius: 999px; padding: 4px 14px;
+    font-weight: 800; font-size: 15px;
+  }
+  .topbar .hud .num { color: var(--red); }
+  .btn {
+    border: none; cursor: pointer;
+    font-family: inherit; font-weight: 800;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f77f6b, #d64541);
+    color: #fff; padding: 10px 26px; font-size: 18px;
+    box-shadow: 0 5px 0 #a93226, 0 8px 14px rgba(169,50,38,0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #a93226, 0 2px 6px rgba(169,50,38,0.3); }
+  .btn.gold { background: linear-gradient(180deg, #ffd97d, #f5b041); color: #5a3e00; box-shadow: 0 5px 0 #c98f1b, 0 8px 14px rgba(201,143,27,0.35); }
+  .btn.gold:active { box-shadow: 0 1px 0 #c98f1b, 0 2px 6px rgba(201,143,27,0.35); }
+  .btn.green { background: linear-gradient(180deg, #7fd8ab, #52b788); box-shadow: 0 5px 0 #3b9166, 0 8px 14px rgba(59,145,102,0.3); }
+  .btn.green:active { box-shadow: 0 1px 0 #3b9166, 0 2px 6px rgba(59,145,102,0.3); }
+  .btn.big { font-size: 22px; padding: 14px 40px; }
+  .btn.icon { padding: 8px 14px; font-size: 16px; }
+
+  /* ---- タイトル ---- */
+  #titleScreen { align-items: center; justify-content: center; text-align: center; gap: 6px; padding: 20px; }
+  .logo-wrap { position: relative; margin-bottom: 6px; }
+  .logo { font-size: 54px; font-weight: 900; letter-spacing: 2px; line-height: 1.15;
+    color: #fff; text-shadow: 0 3px 0 var(--red-dark), 0 6px 0 rgba(169,50,38,0.4), 0 10px 20px rgba(169,50,38,0.35); }
+  .logo .small { display: block; font-size: 22px; font-weight: 800; color: var(--gold); text-shadow: 0 2px 0 #7a4d00; margin-top: 2px; }
+  .title-master { font-size: 46px; animation: bob 2s infinite ease-in-out; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .title-tag { font-size: 15px; color: #7a5a3a; margin-top: 6px; font-weight: 700; }
+  .title-sakura { position: absolute; width: 18px; height: 18px; background: #f7b7c8; border-radius: 60% 40% 55% 45% / 60% 50% 50% 40%; animation: fall 6s linear infinite; opacity: 0.85; }
+  @keyframes fall { 0% { transform: translateY(-40px) rotate(0); } 100% { transform: translateY(140vh) rotate(360deg); } }
+  .version { position: absolute; bottom: 14px; font-size: 11px; color: #b39b80; }
+
+  /* ---- プレイヤー選択 ---- */
+  #slotScreen { padding: 20px; align-items: center; }
+  .screen-title { font-size: 26px; font-weight: 900; color: var(--red); text-shadow: 0 2px 0 rgba(255,255,255,0.8); margin-bottom: 4px; text-align: center; }
+  .screen-sub { font-size: 14px; color: #8a6a4a; font-weight: 700; text-align: center; margin-bottom: 16px; }
+  .slot-list { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 460px; }
+  .slot {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border: 3px solid #e8d5b8; border-radius: 20px; padding: 12px 16px;
+    cursor: pointer; transition: transform 0.1s, border-color 0.1s; position: relative;
+  }
+  .slot:hover { transform: scale(1.02); border-color: var(--gold); }
+  .slot .avatar { font-size: 40px; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; background: var(--gold-light); border-radius: 50%; }
+  .slot .meta { flex: 1; text-align: left; }
+  .slot .meta .name { font-size: 20px; font-weight: 900; }
+  .slot .meta .info { font-size: 12px; color: #9a7a5a; font-weight: 700; }
+  .slot.empty { border-style: dashed; color: #b09a7c; justify-content: center; }
+  .slot.empty .name { color: #b09a7c; }
+  .slot .delete { position: absolute; top: 6px; right: 10px; background: none; border: none; font-size: 16px; color: #d0b8a0; cursor: pointer; padding: 4px; }
+  .slot .delete:hover { color: var(--red); }
+  .name-modal { position: absolute; inset: 0; background: rgba(70,40,10,0.5); display: none; align-items: center; justify-content: center; z-index: 20; }
+  .name-modal.active { display: flex; }
+  .name-modal .box { background: #fff; border-radius: 24px; padding: 26px 24px; width: 88%; max-width: 400px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+  .name-modal input { width: 100%; font-size: 22px; padding: 10px 14px; border: 3px solid var(--gold); border-radius: 12px; text-align: center; font-family: inherit; margin: 14px 0; outline: none; }
+  .name-modal .row { display: flex; gap: 10px; justify-content: center; }
+
+  /* ---- 段マップ ---- */
+  #mapScreen { padding: 14px; }
+  .map-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 10px 4px 80px; align-content: start; }
+  .map-cell {
+    background: #fff; border: 3px solid #e8d5b8; border-radius: 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 4px; cursor: pointer; transition: transform 0.1s; position: relative;
+  }
+  .map-cell:hover { transform: scale(1.03); }
+  .map-cell .dan { font-size: 13px; font-weight: 800; color: #a08060; }
+  .map-cell .emoji { font-size: 34px; }
+  .map-cell .name { font-size: 11px; font-weight: 800; color: var(--ink); }
+  .map-cell .medals { font-size: 13px; margin-top: 2px; }
+  .map-cell.locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+  .map-cell.current { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(245,176,65,0.35); }
+  .map-cell.cleared { border-color: var(--green); background: #f0faf4; }
+  .map-cell.complete .emoji::after { content: "⭐"; }
+
+  /* ---- ステージ導入 ---- */
+  #introScreen { align-items: center; justify-content: center; text-align: center; padding: 20px; gap: 14px; }
+  .master-big { font-size: 110px; line-height: 1.1; animation: bob 1.8s infinite ease-in-out; }
+  .master-name { font-size: 30px; font-weight: 900; color: var(--red); }
+  .speech {
+    background: #fff; border: 3px solid var(--gold); border-radius: 22px; padding: 14px 18px;
+    font-size: 17px; font-weight: 700; line-height: 1.6; max-width: 420px; position: relative;
+    box-shadow: 0 4px 12px rgba(120,70,20,0.15);
+  }
+  .speech::before { content: ""; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-bottom-color: var(--gold); }
+  .stage-badge { font-size: 15px; font-weight: 900; background: var(--red); color: #fff; padding: 5px 18px; border-radius: 999px; }
+  .stage-badge.train { background: var(--blue); }
+  .stage-badge.boss { background: #6c3483; }
+
+  /* ---- 出題 ---- */
+  #playScreen { position: relative; }
+  .enemy-zone { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 200px; }
+  .enemy-wrap { text-align: center; position: relative; }
+  .enemy-emoji { font-size: 96px; transition: transform 0.1s; animation: floaty 1.6s infinite ease-in-out; display: inline-block; }
+  .enemy-emoji.hurt { animation: shake 0.4s; }
+  @keyframes floaty { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+  @keyframes shake { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-6px,0); } 75% { transform: translate(6px,0); } }
+  .enemy-emoji.hit { animation: hitpop 0.35s; }
+  @keyframes hitpop { 0% { transform: scale(1); filter: brightness(2); } 100% { transform: scale(1.08); } }
+  .q-balloon {
+    background: #fff; border: 3px solid var(--gold); border-radius: 18px;
+    padding: 10px 22px; font-size: 34px; font-weight: 900; color: var(--ink);
+    box-shadow: 0 4px 12px rgba(120,70,20,0.2); display: inline-block; margin-top: 6px;
+    min-width: 200px;
+  }
+  .q-balloon .q { color: var(--red); }
+  .boss-hpbar { width: 70%; max-width: 340px; height: 18px; background: rgba(0,0,0,0.15); border-radius: 999px; margin: 8px auto 0; overflow: hidden; border: 2px solid #fff; }
+  .boss-hpbar .fill { height: 100%; background: linear-gradient(90deg, #ffd97d, #d64541); width: 100%; transition: width 0.3s; }
+  .choice-pad { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .choice {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border: none; border-radius: 22px; padding: 18px; font-size: 30px; font-weight: 900;
+    cursor: pointer; color: #fff; position: relative; transition: transform 0.08s;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.22), 0 8px 16px rgba(0,0,0,0.12);
+  }
+  .choice:active { transform: scale(0.96); }
+  .choice .mark { font-size: 18px; opacity: 0.85; }
+  .choice .val { flex: 1; text-align: left; }
+  .choice.c1 { background: linear-gradient(180deg, #f77f6b, #d64541); }
+  .choice.c2 { background: linear-gradient(180deg, #7fd8ab, #52b788); }
+  .choice.c3 { background: linear-gradient(180deg, #8ec8f2, #5dade2); }
+  .choice.correct { background: linear-gradient(180deg, #ffd97d, #f5b041) !important; color: #5a3e00; }
+  .choice.wrong { background: #9e9e9e !important; }
+  .feedback { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) scale(0);
+    font-size: 24px; font-weight: 900; z-index: 10; pointer-events: none; text-align: center;
+    max-width: 88vw; line-height: 1.35; white-space: normal; text-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+  .feedback.show { animation: feedbackpop 0.7s forwards; }
+  @keyframes feedbackpop { 0% { transform: translate(-50%,-50%) scale(0.6); opacity: 1; } 60% { transform: translate(-50%,-58%) scale(1.05); opacity: 1; } 100% { transform: translate(-50%,-78%) scale(1); opacity: 0; } }
+  .feedback.good { color: var(--gold); }
+  .feedback.bad { color: var(--red); }
+  .combo-float { position: absolute; top: 16%; left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 900; color: var(--gold); z-index: 9; pointer-events: none; text-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+
+  /* ---- おにぎり学習 ---- */
+  #learnScreen { align-items: center; padding: 16px; }
+  .learn-title { font-size: 22px; font-weight: 900; color: var(--red); text-align: center; }
+  .learn-q { font-size: 30px; font-weight: 900; text-align: center; margin: 6px 0; }
+  .gameover-emoji { font-size: 70px; }
+  .gameover-title { font-size: 28px; font-weight: 900; color: var(--red); margin: 8px 0; }
+  .gameover-sub { font-size: 15px; color: #8a6a4a; font-weight: 700; }
+  .learn-q.correct-answer { color: #fff; background: linear-gradient(180deg, var(--gold), #e8a000); border-radius: 14px; padding: 10px 0; box-shadow: 0 4px 0 #b9791a; }
+  #muteBtn { position: fixed; top: 10px; right: 10px; z-index: 9999; width: 42px; height: 42px; border-radius: 50%; border: 3px solid #fff; background: var(--red); color: #fff; font-size: 18px; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+  #muteBtn:active { transform: translateY(2px); }
+  .onigiri-area { flex: 1; overflow-y: auto; width: 100%; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .og-group { display: flex; flex-direction: column; gap: 4px; align-items: center; border: 3px solid #e8d5b8; border-radius: 18px; padding: 8px; background: #fff; transition: all 0.3s; cursor: pointer; }
+  .og-group .og-row { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+  .og-group .og { font-size: 24px; transition: transform 0.15s; }
+  .og-group.hl { border-color: var(--gold); background: var(--gold-light); box-shadow: 0 0 0 4px rgba(245,176,65,0.3); }
+  .og-group.hl .og { transform: scale(1.15); }
+  .og-count { font-size: 20px; font-weight: 900; color: var(--red); }
+  .learn-guide { font-size: 13px; color: #8a6a4a; text-align: center; margin: 6px 0; font-weight: 700; }
+
+  /* ---- クリア ---- */
+  #clearScreen { align-items: center; justify-content: center; text-align: center; padding: 20px; gap: 10px; }
+  .clear-emoji { font-size: 80px; animation: bob 1.4s infinite ease-in-out; }
+  .clear-title { font-size: 30px; font-weight: 900; color: var(--gold); text-shadow: 0 2px 0 rgba(0,0,0,0.15); }
+  .medal-row { display: flex; gap: 14px; justify-content: center; align-items: center; }
+  .medal { font-size: 56px; animation: pop 0.5s backwards; }
+  .medal.silver { animation-delay: 0.15s; }
+  .medal.bronze { animation-delay: 0.3s; }
+  @keyframes pop { 0% { transform: scale(0) rotate(-30deg); } 70% { transform: scale(1.3) rotate(5deg); } 100% { transform: scale(1) rotate(0); } }
+  .card-reward { display: flex; align-items: center; gap: 12px; background: #fff; border: 3px solid var(--gold); border-radius: 18px; padding: 10px 18px; margin-top: 4px; }
+  .card-reward .c-emoji { font-size: 40px; }
+  .card-reward .c-name { font-weight: 900; font-size: 16px; }
+  .card-reward .c-new { background: var(--red); color: #fff; font-size: 12px; font-weight: 900; padding: 2px 10px; border-radius: 999px; }
+  .stage-progress { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+  .stage-dot { width: 14px; height: 14px; border-radius: 50%; background: #e0cdb0; border: 2px solid #fff; }
+  .stage-dot.done { background: var(--green); }
+  .stage-dot.now { background: var(--gold); }
+  .stage-dot.lock { background: #ddd; }
+
+  /* ---- カード ---- */
+  #cardScreen { padding: 14px; }
+  .card-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 10px 4px 80px; }
+  .card-item { background: #fff; border: 3px solid #e8d5b8; border-radius: 18px; padding: 12px 6px; text-align: center; }
+  .card-item .c-emoji { font-size: 40px; }
+  .card-item .c-name { font-size: 12px; font-weight: 900; margin-top: 4px; }
+  .card-item.got { border-color: var(--gold); background: linear-gradient(180deg, #fff8ec, #fff); }
+  .card-item.ng { filter: grayscale(1); opacity: 0.5; }
+  .card-item .c-new { position: absolute; }
+
+  /* ---- 成績表 ---- */
+  #recordScreen { padding: 14px; }
+  .record-wrap { flex: 1; overflow-y: auto; padding: 6px 4px 90px; }
+  .record-card { background: #fff; border: 3px solid #e8d5b8; border-radius: 18px; padding: 12px 14px; margin-bottom: 12px; }
+  .record-card .row-head { display: flex; justify-content: space-between; align-items: center; font-weight: 900; }
+  .record-card .dan-name { font-size: 17px; }
+  .record-card .medals { font-size: 14px; }
+  .record-card .bars { margin-top: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; margin-top: 3px; }
+  .bar-row .lbl { width: 44px; color: #8a6a4a; }
+  .bar-row .bar-bg { flex: 1; height: 10px; background: #f0e5d5; border-radius: 999px; overflow: hidden; }
+  .bar-row .bar { height: 100%; border-radius: 999px; }
+  .bar-row .val { width: 40px; text-align: right; }
+  .bar.good { background: var(--green); }
+  .bar.bad { background: var(--red); }
+  .weak-note { background: var(--gold-light); border: 2px solid var(--gold); border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 800; color: #7a5a1a; margin-bottom: 12px; }
+
+  /* ---- ボーナス ---- */
+  #bonusScreen { align-items: center; justify-content: center; text-align: center; padding: 20px; gap: 12px; }
+  .bonus-emoji { font-size: 90px; animation: bob 1.2s infinite ease-in-out; }
+
+  .footer-nav { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; padding: 12px; background: rgba(255,255,255,0.85); border-top: 2px dashed rgba(214,69,65,0.2); z-index: 5; }
+  .hidden { display: none !important; }
+  .disabled { pointer-events: none; opacity: 0.5; }
+
+  /* ===== 本家「算数忍者」風の追加演出 ===== */
+  /* トップ画面の9人の先生 */
+  .master-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 8px 0 4px; }
+  .master-row .m { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(120,70,20,0.3)); }
+  /* 先生の吹き出し（問題文） */
+  .master-speech {
+    background: #fff; border: 4px solid var(--gold); border-radius: 20px;
+    padding: 12px 18px; font-size: 26px; font-weight: 900; color: var(--ink);
+    margin: 6px auto; max-width: 340px; position: relative; text-align: center;
+    box-shadow: 0 5px 0 rgba(214,69,65,0.15), 0 8px 16px rgba(120,70,20,0.2);
+  }
+  .master-speech::before {
+    content: ""; position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+    border: 9px solid transparent; border-bottom-color: var(--gold);
+  }
+  /* 手裏剣飛行エフェクト */
+  .shuriken-fly {
+    position: absolute; font-size: 42px; z-index: 30; pointer-events: none;
+    left: 50%; top: 70%;
+    animation: shurikenFly 0.45s cubic-bezier(.3,.7,.4,1) forwards;
+  }
+  @keyframes shurikenFly {
+    0% { transform: translate(-50%,-50%) rotate(0) scale(0.6); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(720deg) scale(1.1); opacity: 0; }
+  }
+  .slash {
+    position: absolute; font-size: 70px; z-index: 28; pointer-events: none; left: 50%; top: 35%;
+    transform: translate(-50%,-50%) scale(0); opacity: 0;
+    animation: slashPop 0.5s ease-out forwards;
+  }
+  @keyframes slashPop { 0% { transform: translate(-50%,-50%) scale(0) rotate(-30deg); opacity: 1; }
+    70% { transform: translate(-50%,-50%) scale(1.3) rotate(10deg); opacity: 1; }
+    100% { transform: translate(-50%,-60%) scale(1) rotate(0); opacity: 0; } }
+  /* ボス戦背景（炎） */
+  .boss-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(circle at 50% 35%, rgba(214,69,65,0.45), transparent 70%);
+    animation: bossPulse 1.1s ease-in-out infinite alternate;
+  }
+  @keyframes bossPulse { from { opacity: 0.45; } to { opacity: 0.95; } }
+  .screen.bossfight::after {
+    content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    box-shadow: inset 0 0 90px 20px rgba(180,20,20,0.55);
+    animation: bossVignette 0.9s ease-in-out infinite alternate;
+  }
+  @keyframes bossVignette { from { box-shadow: inset 0 0 60px 10px rgba(180,20,20,0.35); } to { box-shadow: inset 0 0 110px 26px rgba(200,30,30,0.6); } }
+  .screen.bossfight { animation: bossShake 0.5s ease-in-out infinite; }
+  @keyframes bossShake {
+    0% { transform: translate(0,0); } 25% { transform: translate(-2px,1px); }
+    50% { transform: translate(2px,-1px); } 75% { transform: translate(-1px,-1px); }
+    100% { transform: translate(1px,1px); } }
+  .enemy-emoji.bossmode { font-size: 130px; filter: drop-shadow(0 0 14px rgba(255,60,40,0.85)); animation: bossFloat 1.1s ease-in-out infinite; }
+  @keyframes bossFloat { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+  /* 和風装飾：のれん・提灯 */
+  .noren {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(180deg, #d64541, #a93226);
+    color: #fff; font-weight: 900; font-size: 14px; letter-spacing: 2px;
+    padding: 6px 22px; border-radius: 0 0 12px 12px; z-index: 1; box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  }
+  .lantern {
+    position: absolute; width: 26px; height: 34px; background: radial-gradient(circle at 50% 40%, #ffd97d, #e67e22);
+    border-radius: 50%; border: 2px solid #a93226; z-index: 1; opacity: 0.92;
+    animation: sway 3s ease-in-out infinite;
+  }
+  @keyframes sway { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+  /* 先生カードの特徴文 */
+  .map-cell .trait { font-size: 10px; color: #8a6a4a; margin-top: 2px; line-height: 1.2; padding: 0 2px; }
+  /* ボス本気セリフ */
+  .boss-line { font-size: 18px; font-weight: 900; color: #6c3483; margin-top: 4px; min-height: 22px; }
+
+  /* 対決レイアウト */
+  .battle { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 8px 0 4px; position: relative; }
+  .fighter { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .fighter.right { transform: scaleX(-1); }
+  .vs { font-weight: 900; font-size: 18px; color: var(--red-dark); background: #fff; border: 3px solid var(--gold); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(120,70,20,0.2); flex: 0 0 auto; }
+  .enemy-emoji.bossmode { transform: scale(1.2); }
+  .ninja-svg { display: block; filter: drop-shadow(0 4px 6px rgba(120,70,20,0.25)); }
+  .enemy-emoji.hit .ninja-svg, .enemy-emoji.hurt .ninja-svg { animation: hitpop 0.35s; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="screen" id="titleScreen"></div>
+  <div class="screen" id="slotScreen"></div>
+  <div class="screen" id="mapScreen"></div>
+  <div class="screen" id="introScreen"></div>
+  <div class="screen" id="playScreen"></div>
+  <div class="screen" id="learnScreen"></div>
+  <div class="screen" id="gameoverScreen"></div>
+  <div class="screen" id="clearScreen"></div>
+  <div class="screen" id="cardScreen"></div>
+  <div class="screen" id="recordScreen"></div>
+  <div class="screen" id="bonusScreen"></div>
+</div>
+<script>
+(function () {
+  "use strict";
+
+  // ============ 先生キャラクター（段ごと）＝本家キャラ準拠 ============
+  const MASTERS = {
+    1: {
+      name: "わん丸先生", emoji: "🐶",
+      trait: "明るい性格で何でも相談に乗ってくれる。算数忍者の中で鼻と耳が一番良くきく。",
+      intro: "1の段は九九のはじまり！わんっ、いっしょにがんばるぞ！",
+      lines: ["1のだん、れんしゅうじゃ！", "わんっ、いくぞ！", "ぜんぶ 1ばい だ！", "きっと できるワン！"],
+      boss: "わん丸先生だ！こらえてみせる！",
+      bossLines: ["ほえー！", "こらえるぞ！", "まだまだじゃ！", "わん丸、ホンキだ！"]
+    },
+    2: {
+      name: "ぴよひげ先生", emoji: "🐣",
+      trait: "無口だがみんなに優しい。頭の中にひよこが住んでいて、毎日2時間一緒に遊んでいる。",
+      intro: "2の段！ぴよぴよ、かんたんにのりこえるよ！",
+      lines: ["2のだん、はじまるぴよ！", "ぴよ、れんしゅうじゃ！", "2ばい おぼえよう！", "ぴよひげ、おねがい！"],
+      boss: "ぴよひげ先生、本気だす！",
+      bossLines: ["ぴよぴよー！", "こらえるぴよ！", "まだいけるぴよ！", "ぴよひげ、ホンキ！"]
+    },
+    3: {
+      name: "クリス先生", emoji: "🦜",
+      trait: "海のむこうからやって来た青い目をした先生。生まれてはじめて覚えた言葉が「3」らしい。",
+      intro: "3の段！ハロー、いっしょにたのしもう！",
+      lines: ["3のだん、レッツゴー！", "ハロー、れんしゅう！", "3ばい チャレンジ！", "ナイス、いくよ！"],
+      boss: "クリス先生、そろそろホンキだよ！",
+      bossLines: ["オーケー！", "コラエール！", "ユーキャン！", "クリス、ホンキ！"]
+    },
+    4: {
+      name: "からくり先生", emoji: "🤖",
+      trait: "からくり人形の先生。おなかの中には中のねずみが住み着いている。",
+      intro: "4の段！からくりメカで修行だ！",
+      lines: ["4のだん、カチカチ！", "からくり、れんしゅう！", "4ばい ガチャン！", "メカ、スタート！"],
+      boss: "からくり先生、ハイパーモード起動！",
+      bossLines: ["ギガギガ！", "カラクリ、ホンキ！", "メカ、マックス！", "ハイパー、ゴー！"]
+    },
+    5: {
+      name: "ごろ先生", emoji: "🐻",
+      trait: "のんびりやの熊の先生。5の段が得意で、いつもごろごろしながら教えてくれる。",
+      intro: "5の段！くまらずにどんどんいくぞ！",
+      lines: ["5のだん、ごろん！", "くま、れんしゅう！", "5ばい ラクラク！", "のんびり、いくよ！"],
+      boss: "ごろ先生、とびかかってくるぞ！",
+      bossLines: ["ぐるる！", "こらえるクマ！", "まだやるクマ！", "ごろ、ホンキ！"]
+    },
+    6: {
+      name: "つばき先生", emoji: "🥷",
+      trait: "6の段を教えるくのいち。くさり鎌を改造したリボン鎌を使う。実は大食いで毎日お弁当を6個食べる。",
+      intro: "6の段！くのいちのけいこはきびしいぜ！",
+      lines: ["6のだん、しゅっと！", "くのいち、れんしゅう！", "6ばい ひらり！", "リボン、いくよ！"],
+      boss: "つばき先生、リボン鎌のすがたみせます！",
+      bossLines: ["ひゃっ！", "こらえるぜ！", "まだいける！", "つばき、ホンキ！"]
+    },
+    7: {
+      name: "旅ネコ先生", emoji: "🐱",
+      trait: "世界中を旅している猫。算数に興味があって九九道場をたずねてきた。7の段が苦手らしい。",
+      intro: "7の段！にゃんともむずかしいけどだいじょうぶ！",
+      lines: ["7のだん、にゃー！", "旅ネコ、れんしゅう！", "7ばい チャレンジ！", "にゃん、いくよ！"],
+      boss: "旅ネコ先生、ねこのあなをぬけてやる！",
+      bossLines: ["にゃー！", "こらえるにゃ！", "まだやるにゃ！", "旅ネコ、ホンキ！"]
+    },
+    8: {
+      name: "中のねずみ先生", emoji: "🐭",
+      trait: "からくり先生のおなかの中に住み着いているねずみ。イタズラ好きだが本当はいいやつ。",
+      intro: "8の段！ちゅう、からくりの中からちゅうい！",
+      lines: ["8のだん、チュウ！", "ねずみ、れんしゅう！", "8ばい チュウチュウ！", "ちゅう、いくよ！"],
+      boss: "中のねずみ先生、チュウチュウとおどる！",
+      bossLines: ["チュウチュウ！", "こらえるチュウ！", "まだやるチュウ！", "ねずみ、ホンキ！"]
+    },
+    9: {
+      name: "九兵衛先生", emoji: "🐉",
+      trait: "最強の龍の先生。すべての九九をつかいこなす、道場の長。",
+      intro: "さいごの9の段！すべての九九をつかうぞ！",
+      lines: ["9のだん、ガオー！", "りゅう、れんしゅう！", "9ばい フルスイング！", "いくぞ、ガオ！"],
+      boss: "九兵衛先生、さいごのほのおをみせます！",
+      bossLines: ["ガオー！", "こらえるドラゴン！", "まだまだじゃ！", "九兵衛、ホンキ！"]
+    }
+  };
+
+  // ============ オリジナル忍者キャラ（SVG） ============
+  const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"dragon" };
+  function makeNinja(dan, size) {
+    const animal = ANIMAL[dan] || "dog";
+    const ear = {
+      dog:"#b5651d", chick:"#f7c948", parrot:"#3498db", robot:"#95a5a6",
+      bear:"#a0522d", kunoichi:"#e75480", cat:"#5d6d7e", mouse:"#9e9e9e", dragon:"#27ae60"
+    }[animal];
+    const accent = {
+      dog:"#b5651d", chick:"#f7c948", parrot:"#3498db", robot:"#7f8c8d",
+      bear:"#a0522d", kunoichi:"#e75480", cat:"#5dade2", mouse:"#9e9e9e", dragon:"#27ae60"
+    }[animal];
+    const head = "#d64541";
+    let ears = "";
+    if (animal === "dog") ears = `<path d="M22,55 Q6,84 30,90 Q34,66 42,54 Z" fill="${ear}"/><path d="M98,55 Q114,84 90,90 Q86,66 78,54 Z" fill="${ear}"/>`;
+    else if (animal === "bear" || animal === "mouse") ears = `<circle cx="27" cy="40" r="14" fill="${ear}"/><circle cx="93" cy="40" r="14" fill="${ear}"/>`;
+    else if (animal === "cat") ears = `<path d="M24,52 L16,20 L48,44 Z" fill="${ear}"/><path d="M96,52 L104,20 L72,44 Z" fill="${ear}"/>`;
+    else if (animal === "robot") ears = `<line x1="40" y1="26" x2="28" y2="6" stroke="${ear}" stroke-width="4"/><circle cx="28" cy="5" r="5" fill="${ear}"/><line x1="80" y1="26" x2="92" y2="6" stroke="${ear}" stroke-width="4"/><circle cx="92" cy="5" r="5" fill="${ear}"/>`;
+    else if (animal === "dragon") ears = `<path d="M34,32 Q16,-2 52,16 Q42,28 46,42 Z" fill="${ear}" stroke="#1e8449" stroke-width="2"/><path d="M86,32 Q104,-2 68,16 Q78,28 74,42 Z" fill="${ear}" stroke="#1e8449" stroke-width="2"/>`;
+    else if (animal === "chick" || animal === "parrot") ears = `<path d="M58,66 L76,80 L58,92 Z" fill="#e67e22"/>`;
+    else if (animal === "kunoichi") ears = `<path d="M20,42 Q8,14 38,30 Q30,46 42,54 Z" fill="${ear}"/><path d="M100,42 Q112,14 82,30 Q90,46 78,54 Z" fill="${ear}"/><circle cx="60" cy="12" r="9" fill="${accent}"/>`;
+    const w = size || 96;
+    return `<svg viewBox="0 0 120 132" width="${w}" height="${Math.round(w*1.1)}" class="ninja-svg">
+      ${ears}
+      <path d="M16,64 Q60,6 104,64 L104,78 Q60,46 16,78 Z" fill="${head}"/>
+      <circle cx="60" cy="70" r="33" fill="#ffe0bd"/>
+      <rect x="40" y="64" width="40" height="8" rx="4" fill="#2b2b2b"/>
+      <path d="M24,100 Q60,120 96,100 L96,114 Q60,132 24,114 Z" fill="${accent}"/>
+    </svg>`;
+  }
+
+  // 主人公（プレイヤー忍者）
+  const HERO_SVG = `<svg viewBox="0 0 120 132" width="92" height="101" class="ninja-svg hero">
+    <path d="M22,55 Q6,84 30,90 Q34,66 42,54 Z" fill="#2b2b2b"/><path d="M98,55 Q114,84 90,90 Q86,66 78,54 Z" fill="#2b2b2b"/>
+    <path d="M16,64 Q60,6 104,64 L104,78 Q60,46 16,78 Z" fill="#34495e"/>
+    <circle cx="60" cy="70" r="33" fill="#ffe0bd"/>
+    <rect x="40" y="64" width="40" height="8" rx="4" fill="#2b2b2b"/>
+    <path d="M24,100 Q60,120 96,100 L96,114 Q60,132 24,114 Z" fill="#5dade2"/>
+  </svg>`;
+
+  // ============ ステージ定義 ============
+  const STAGES = [
+    { key: "practice", label: "修行", badge: "practice", mode: "sequence", count: 9 },
+    { key: "train1", label: "実践", badge: "train", mode: "random", count: 6 },
+    { key: "train2", label: "実践", badge: "train", mode: "random", count: 6 },
+    { key: "boss", label: "ボス戦", badge: "boss", mode: "random", count: 6 }
+  ];
+  const BOSS_HP = 6;              // ボスのHP
+  const PLAYER_LIVES = 3;         // ハート数
+
+  // ============ 音声 ============
+  const NUM_KANA = ["", "いち", "に", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+  function numToKana(n) {
+    if (n <= 9) return NUM_KANA[n];
+    if (n === 10) return "じゅう";
+    const ten = Math.floor(n / 10), one = n % 10;
+    let s = ten === 1 ? "じゅう" : NUM_KANA[ten] + "じゅう";
+    if (one > 0) s += NUM_KANA[one];
+    return s;
+  }
+
+  // 九九の読み方（問題のみ・答えは言わない）：「いんいちが」
+  const KU_DAN = ["いん", "にん", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+  function kukuQuestion(a, b) {
+    return KU_DAN[a - 1] + numToKana(b) + "が";
+  }
+  let muted = false;
+  function speakKuku(a, b) {
+    if (muted) return;
+    speak(kukuQuestion(a, b));
+  }
+
+  function speak(text) {
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "ja-JP";
+      u.rate = 0.95;
+      u.pitch = 1.2;
+      const voices = window.speechSynthesis.getVoices();
+      const jp = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ja"));
+      if (jp) u.voice = jp;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* 音声なしでも動作 */ }
+  }
+  if (window.speechSynthesis) window.speechSynthesis.getVoices();
+
+  // ============ Web Audio 効果音・BGM ============
+  let audioCtx = null;
+  function initAudio() {
+    try {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  function note(freq, dur, type, vol, delay) {
+    try {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime + (delay || 0);
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.2, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  }
+  function drum(vol, delay) {
+    try {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime + (delay || 0);
+      const n = Math.floor(audioCtx.sampleRate * 0.08);
+      const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+      const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+      g.gain.value = vol || 0.25;
+      src.buffer = buf; src.connect(g).connect(audioCtx.destination);
+      src.start(t0);
+      note(90, 0.12, "sine", (vol || 0.25) * 1.5, delay || 0);
+    } catch (e) {}
+  }
+  const SFX = {
+    click: () => { note(660, 0.06, "sine", 0.15); },
+    shuriken: () => { note(900, 0.12, "triangle", 0.15); note(1400, 0.12, "triangle", 0.08, 0.03); },
+    correct: () => { note(523, 0.09, "sine", 0.22); note(659, 0.09, "sine", 0.22, 0.07); note(784, 0.14, "sine", 0.22, 0.14); },
+    wrong: () => { note(220, 0.2, "sawtooth", 0.12); note(160, 0.3, "sawtooth", 0.12, 0.12); },
+    bossHit: () => { drum(0.4); note(140, 0.15, "square", 0.18); },
+    heartLost: () => { note(300, 0.25, "sawtooth", 0.15, 0); note(180, 0.35, "sawtooth", 0.15, 0.15); },
+    clear: () => { [523,659,784,1047,784,1047].forEach((f,i)=>note(f,0.16,"triangle",0.2,i*0.1)); drum(0.3, 0.5); },
+    card: () => { [659,880,1100,1320].forEach((f,i)=>note(f,0.12,"triangle",0.2,i*0.06)); },
+    medal: () => { [784,988,1175].forEach((f,i)=>note(f,0.1,"sine",0.2,i*0.05)); },
+    bgmNote: null
+  };
+  const BGM_PENTA = [262, 294, 330, 392, 440, 523];
+  // 通常：忍者ぽい和風アルペジオ（ヨナ抜き音階）
+  const BGM_NORMAL = [262, 330, 392, 330, 294, 392, 440, 392];
+  // ボス：攻撃的で緊張感のあるフレーズ
+  const BGM_BOSS = [392, 440, 523, 440, 392, 330, 392, 466];
+  let bgmTimer = null, bgmStep = 0, bgmMode = "normal";
+  function startBGM(mode) {
+    initAudio();
+    mode = mode || "normal";
+    if (bgmTimer && bgmMode === mode) return;
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+    bgmMode = mode;
+    bgmStep = 0;
+    const seq = mode === "boss" ? BGM_BOSS : BGM_NORMAL;
+    const tempo = mode === "boss" ? 165 : 230;
+    bgmTimer = setInterval(() => {
+      if (!audioCtx || audioCtx.state !== "running") return;
+      const f = seq[bgmStep % seq.length];
+      if (mode === "boss") {
+        // 低音のドス + 鋭いメロディ
+        note(f, 0.16, "square", 0.05);
+        if (bgmStep % 2 === 0) { note(98, 0.18, "sawtooth", 0.06); drum(0.22); }
+      } else {
+        note(f, 0.34, "triangle", 0.05);
+        if (bgmStep % 4 === 0) drum(0.08);
+      }
+      bgmStep++;
+    }, tempo);
+  }
+  function stopBGM() {
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+  }
+
+  // ============ 状態 ============
+  const SAVE_KEY = "sansuNinjaData";
+  let players = loadData().players || [];
+  let currentPlayer = null;   // 名前
+  let dan = 1;                // 現在の段 1..9
+  let stageIdx = 0;           // STAGES のインデックス
+  let question = null;
+  let lives = PLAYER_LIVES;
+  let bossHp = BOSS_HP;
+  let mistakes = 0;           // このステージのミス数（メダル判定）
+  let streak = 0;             // 連続正解
+  let answeredInStage = 0;    // このステージで解いた数
+  let totalCorrect = 0;
+  let totalWrong = 0;
+  let isBoss = false;
+  let isBonus = false;
+  let bonusTotal = 10;
+
+  function loadData() {
+    const tryParse = (raw) => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
+    try { const r = tryParse(localStorage.getItem(SAVE_KEY)); if (r) return r; } catch (e) {}
+    try { const r = tryParse(sessionStorage.getItem(SAVE_KEY)); if (r) return r; } catch (e) {}
+    try { if (window.name && window.name.indexOf("SN:") === 0) { const r = tryParse(window.name.slice(3)); if (r) return r; } } catch (e) {}
+    return {};
+  }
+  function saveData() {
+    const data = JSON.stringify({ players });
+    try { localStorage.setItem(SAVE_KEY, data); } catch (e) {}
+    try { sessionStorage.setItem(SAVE_KEY, data); } catch (e) {}
+    try { window.name = "SN:" + data; } catch (e) {}
+    try { if (saveChannel) saveChannel.postMessage({ type: "save", players }); } catch (e) {}
+  }
+  // タブ間同期（開いている別タブにも即反映）
+  let saveChannel = null;
+  try { saveChannel = new BroadcastChannel("sansuNinjaSync"); } catch (e) {}
+  if (saveChannel) {
+    saveChannel.onmessage = (ev) => {
+      try {
+        if (ev.data && ev.data.type === "save" && Array.isArray(ev.data.players)) {
+          players = ev.data.players;
+          if (currentPlayer && !playerByName(currentPlayer)) currentPlayer = players.length ? players[0].name : null;
+        }
+      } catch (e) {}
+    };
+  }
+  window.addEventListener("storage", (e) => {
+    try {
+      if (e.key === SAVE_KEY && e.newValue) {
+        const d = JSON.parse(e.newValue);
+        if (d && Array.isArray(d.players)) {
+          players = d.players;
+          if (currentPlayer && !playerByName(currentPlayer)) currentPlayer = players.length ? players[0].name : null;
+        }
+      }
+    } catch (er) {}
+  });
+  function playerByName(name) {
+    return players.find(p => p.name === name);
+  }
+  function ensurePlayer(name) {
+    if (!name && players.length) { name = players[0].name; currentPlayer = name; }
+    let p = playerByName(name);
+    if (!p) {
+      p = { name: name || "ななし", cards: {}, records: {} };
+      players.push(p); currentPlayer = p.name; saveData();
+    }
+    return p;
+  }
+  function danProgress(p) {
+    const prog = {};
+    for (let d = 1; d <= 9; d++) {
+      const rec = (p.records[d] || {}).stages || {};
+      const done = STAGES.filter(s => rec[s.key]).length;
+      prog[d] = done;
+    }
+    return prog;
+  }
+  function isUnlocked(p, d) {
+    if (d === 1) return true;
+    return danProgress(p)[d - 1] >= 1;
+  }
+
+  // ============ 画面切り替え ============
+  const screens = {};
+  function setup() {
+    document.querySelectorAll(".screen").forEach(s => screens[s.id] = s);
+    // 音声オン/オフ 切替ボタン
+    const mb = document.createElement("button");
+    mb.id = "muteBtn";
+    mb.textContent = "🔊";
+    mb.title = "音声のオン/オフ";
+    mb.addEventListener("click", () => {
+      muted = !muted;
+      mb.textContent = muted ? "🔇" : "🔊";
+      if (muted) stopSpeak();
+    });
+    document.body.appendChild(mb);
+  }
+  function show(id) {
+    Object.values(screens).forEach(s => s.classList.remove("active"));
+    screens[id].classList.add("active");
+  }
+  function stopSpeak() { try { window.speechSynthesis.cancel(); } catch (e) {} }
+
+  // ============ タイトル ============
+  function renderTitle() {
+    const s = screens.titleScreen;
+    show("titleScreen");
+    const masters = [];
+    for (let d = 1; d <= 9; d++) masters.push(`<span class="m" title="${MASTERS[d].name}">${makeNinja(d, 30)}</span>`);
+    s.innerHTML = `
+      <div class="title-sakura" style="left:8%"></div>
+      <div class="title-sakura" style="left:32%; animation-delay:2s"></div>
+      <div class="title-sakura" style="left:55%; animation-delay:4s"></div>
+      <div class="title-sakura" style="left:78%; animation-delay:1s"></div>
+      <div class="title-sakura" style="left:90%; animation-delay:3s"></div>
+      <div class="logo">算数忍者<span class="small">〜 九九の巻 〜</span></div>
+      <div class="title-master">🥷</div>
+      <div class="master-row">${masters.join("")}</div>
+      <div class="title-tag">くのいち・忍者になって、9人の「先生」をたおそう！</div>
+      <button class="btn big" style="margin-top:14px" id="btnStart">修行をはじめる！</button>
+      <div class="version">Sansu Ninja - Kuku no Maki (Web Edition)</div>
+    `;
+    s.querySelector("#btnStart").addEventListener("click", () => { SFX.click(); renderSlots(); });
+  }
+
+  // ============ プレイヤー選択 ============
+  function renderSlots() {
+    show("slotScreen");
+    const s = screens.slotScreen;
+    s.innerHTML = `
+      <div class="screen-title">にんじゃをえらぼう！</div>
+      <div class="screen-sub">セーブスロット：3人まで記録できるよ</div>
+      <div class="slot-list" id="slotList"></div>
+      <div class="footer-nav">
+        <button class="btn gold" id="btnCardsNav">🎴 カード</button>
+        <button class="btn gold" id="btnRecNav">📊 成績表</button>
+        <button class="btn" id="btnBackTitle">◀ もどる</button>
+      </div>
+      <div class="name-modal" id="nameModal">
+        <div class="box">
+          <div style="font-size:20px;font-weight:900">なまえをかこう！</div>
+          <input id="nameInput" maxlength="6" placeholder="なまえ" autocomplete="off">
+          <div class="row">
+            <button class="btn green" id="btnNameOk">きめる！</button>
+            <button class="btn" id="btnNameCancel">やめる</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const list = s.querySelector("#slotList");
+    const AVATARS = ["🥷","🦊","🐸","🐼","🐯","🐵"];
+    for (let i = 0; i < 3; i++) {
+      const p = players[i];
+      const div = document.createElement("div");
+      div.className = "slot" + (p ? "" : " empty");
+      if (p) {
+        const prog = danProgress(p);
+        const clearCount = Object.keys(p.cards).length;
+        div.innerHTML = `
+          <div class="avatar">${AVATARS[i % AVATARS.length]}</div>
+          <div class="meta">
+            <div class="name">${p.name}</div>
+            <div class="info">カード ${clearCount}/9 ・ ${prog[1]>=4?"1段◎":""}${prog[2]>=4?"2段◎":""}${prog[3]>=4?"3段◎":""}</div>
+          </div>
+          <button class="delete" data-del="${i}">✕</button>
+        `;
+        div.addEventListener("click", e => {
+          if (e.target.classList.contains("delete")) return;
+          SFX.click(); currentPlayer = p.name; enterMap();
+        });
+      } else {
+        div.innerHTML = `<div class="name">＋ あたらしいにんじゃ</div>`;
+        div.addEventListener("click", () => openNameModal(i));
+      }
+      list.appendChild(div);
+    }
+    s.querySelectorAll(".delete").forEach(b => {
+      b.addEventListener("click", e => {
+        e.stopPropagation();
+        const idx = +b.dataset.del;
+        if (confirm("「" + players[idx].name + "」のデータをけしてもいい？")) {
+          players.splice(idx, 1); saveData(); renderSlots();
+        }
+      });
+    });
+    s.querySelector("#btnCardsNav").addEventListener("click", () => { SFX.click(); renderCards(); });
+    s.querySelector("#btnRecNav").addEventListener("click", () => { SFX.click(); renderRecord(); });
+    s.querySelector("#btnBackTitle").addEventListener("click", () => { SFX.click(); renderTitle(); });
+
+    let pendingSlot = 0;
+    function openNameModal(idx) {
+      pendingSlot = idx;
+      const m = s.querySelector("#nameModal");
+      m.classList.add("active");
+      const inp = m.querySelector("#nameInput");
+      inp.value = "";
+      setTimeout(() => inp.focus(), 50);
+    }
+    s.querySelector("#btnNameOk").addEventListener("click", () => {
+      const inp = s.querySelector("#nameInput");
+      const name = inp.value.trim();
+      if (!name) return;
+      SFX.click();
+      ensurePlayer(name);
+      // 新しい名前を slot に置く
+      currentPlayer = name;
+      closeModal();
+      renderSlots();
+      enterMap();
+    });
+    s.querySelector("#btnNameCancel").addEventListener("click", () => {
+      SFX.click(); closeModal();
+    });
+    function closeModal() { s.querySelector("#nameModal").classList.remove("active"); }
+    inpEnter(s.querySelector("#nameInput"), () => s.querySelector("#btnNameOk").click());
+  }
+  function inpEnter(input, fn) {
+    input.addEventListener("keydown", e => { if (e.key === "Enter") fn(); });
+  }
+
+  // ============ 段マップ ============
+  function enterMap() {
+    show("mapScreen");
+    const s = screens.mapScreen;
+    const p = ensurePlayer(currentPlayer);
+    const prog = danProgress(p);
+    s.innerHTML = `
+      <div class="topbar">
+        <span style="font-weight:900">${p.name} 🥷</span>
+        <button class="btn gold icon" id="btnBackSlot">⬅ もどる</button>
+      </div>
+      <div class="screen-title">🍙 九九道場マップ</div>
+      <div class="screen-sub">段の「先生」をたおして、九九をマスターしよう！</div>
+      <div class="map-grid" id="mapGrid"></div>
+      <div class="footer-nav">
+        <button class="btn" id="btnMixNav">🔀 ミックス実践</button>
+        <button class="btn gold" id="btnCardsNav2">🎴 カード</button>
+        <button class="btn gold" id="btnRecNav2">📊 成績表</button>
+      </div>
+    `;
+    const grid = s.querySelector("#mapGrid");
+    for (let d = 1; d <= 9; d++) {
+      const m = MASTERS[d];
+      const done = prog[d];
+      const unlocked = isUnlocked(p, d);
+      const allDone = done >= STAGES.length;
+      const medals = (p.records[d] || {}).medals || [];
+      const medalStr = medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("");
+      const div = document.createElement("div");
+      div.className = "map-cell" +
+        (allDone ? " cleared complete" : "") +
+        (unlocked && done === 0 ? " current" : "") +
+        (!unlocked ? " locked" : "");
+      div.innerHTML = `
+        <div class="dan">${d}の段</div>
+        <div class="emoji">${unlocked ? makeNinja(d, 56) : "🔒"}</div>
+        <div class="name">${m.name}</div>
+        <div class="trait">${unlocked ? m.trait : "クリアして解放しよう！"}</div>
+        <div class="medals">${medalStr || ""}</div>
+      `;
+      if (unlocked) {
+        div.addEventListener("click", () => { SFX.click(); dan = d; stageIdx = 0; startStage(); });
+      }
+      grid.appendChild(div);
+    }
+    s.querySelector("#btnBackSlot").addEventListener("click", () => { SFX.click(); renderSlots(); });
+    s.querySelector("#btnCardsNav2").addEventListener("click", () => { SFX.click(); renderCards(); });
+    s.querySelector("#btnRecNav2").addEventListener("click", () => { SFX.click(); renderRecord(); });
+    s.querySelector("#btnMixNav").addEventListener("click", () => { SFX.click(); startMix(); });
+  }
+
+  // ============ ミックス実践（1〜9の段 まぜこぜ） ============
+  function startMix() {
+    stopSpeak();
+    show("introScreen");
+    const s = screens.introScreen;
+    s.innerHTML = `
+      <button class="btn icon" id="btnMixBack" style="position:absolute;top:14px;left:14px">◀ もどる</button>
+      <div class="master-big">🔀</div>
+      <div class="master-name">ミックス実践</div>
+      <div class="stage-badge boss">1〜9の段 まぜこぜ</div>
+      <div class="speech">1の段から9の段まで、ランダムにもぜこぜで出題するぞ！どの段でも素早くこたえられるかな？</div>
+      <button class="btn big" id="btnStartMix">いくぞ！</button>
+    `;
+    s.querySelector("#btnStartMix").addEventListener("click", () => { SFX.click(); startBonus(); });
+    s.querySelector("#btnMixBack").addEventListener("click", () => { SFX.click(); enterMap(); });
+  }
+
+  // ============ ステージ開始（導入） ============
+  function startStage() {
+    const stage = STAGES[stageIdx];
+    const m = MASTERS[dan];
+    stopSpeak();
+    show("introScreen");
+    const s = screens.introScreen;
+    s.innerHTML = `
+      <button class="btn icon" id="btnIntroBack" style="position:absolute;top:14px;left:14px">◀ もどる</button>
+      <div class="master-big">${makeNinja(dan, 150)}</div>
+      <div class="master-name">${m.name}</div>
+      <div class="stage-badge ${stage.badge}">${stage.key === "boss" ? "ボス戦！" : stage.label + "ステージ"}</div>
+      <div class="speech" id="introSpeech"></div>
+      <button class="btn big" id="btnStartStage">いくぞ！</button>
+    `;
+    const sp = s.querySelector("#introSpeech");
+    if (stage.key === "boss") {
+      sp.textContent = "さあ…いよいよボス戦だ！「" + m.name + "」としょうぶ！";
+    } else {
+      sp.textContent = m.intro;
+    }
+    s.querySelector("#btnStartStage").addEventListener("click", () => { SFX.click(); startQuestion(); });
+    s.querySelector("#btnIntroBack").addEventListener("click", () => { SFX.click(); enterMap(); });
+  }
+
+  // ============ 出題 ============
+  function genChoices(correct) {
+    const opts = new Set([correct]);
+    while (opts.size < 3) {
+      let w;
+      const r = Math.random();
+      if (r < 0.4) {
+        w = correct + (Math.floor(Math.random() * 5) - 2);
+      } else if (r < 0.7) {
+        w = correct + (Math.floor(Math.random() * 3) + 1) * dan;
+      } else {
+        w = Math.floor(Math.random() * (dan * 9)) + dan;
+      }
+      if (w > 0 && w !== correct) opts.add(w);
+    }
+    const arr = Array.from(opts);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function startQuestion() {
+    const stage = STAGES[stageIdx];
+    isBonus = false;
+    isBoss = stage.key === "boss";
+    lives = PLAYER_LIVES;
+    mistakes = 0;
+    answeredInStage = 0;
+    streak = 0;
+    bossHp = isBoss ? BOSS_HP : 0;
+    startBGM(isBoss ? "boss" : "normal");
+    nextQuestion();
+  }
+
+  function nextQuestion() {
+    const stage = STAGES[stageIdx];
+    // 通常ステージ：count 問出たらクリア
+    if (!isBoss && answeredInStage >= stage.count) {
+      finishStage();
+      return;
+    }
+    // ボス：HP 0 でクリア
+    if (isBoss && bossHp <= 0) {
+      finishStage();
+      return;
+    }
+    const a = dan;
+    let b;
+    if (stage.mode === "sequence") {
+      b = (answeredInStage % 9) + 1;
+    } else {
+      b = Math.floor(Math.random() * 9) + 1;
+    }
+    const correct = a * b;
+    question = { a, b, correct, choices: genChoices(correct) };
+    renderPlay();
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function renderPlay() {
+    show("playScreen");
+    const s = screens.playScreen;
+    const stage = STAGES[stageIdx] || { key: "bonus", label: "ボーナス" };
+    const m = MASTERS[dan] || { emoji: "🌟", name: "ボーナス", lines: ["ぼーなす！"], bossLines: ["ぼーなす！"] };
+    stopSpeak();
+    const enemyEmoji = isBoss ? m.emoji : isBonus ? "🌟" : "👺";
+    const speechText = `${question.a} × ${question.b} は いくつ？`;
+    const masterLine = isBonus ? "まぜこぜだぞ！" : (isBoss ? pick(m.bossLines) : pick(m.lines));
+    s.innerHTML = `
+      ${isBoss ? `<div class="boss-bg"></div>` : ""}
+      <div class="noren">九九道場</div>
+      <div class="lantern" style="left:5%"></div>
+      <div class="lantern" style="right:5%; animation-delay:1.2s"></div>
+      <div class="topbar">
+        <div class="hud">⚔ ${isBonus ? "ボーナス" : dan + "の段"}</div>
+        <div class="hud">${stage.key === "boss" ? "👹 ボス戦" : isBonus ? "🌟 まぜこぜ" : "🔥 " + stage.label}</div>
+        <div class="hud">❤️ <span class="num" id="hudLives">${"♥".repeat(lives)}${"♡".repeat(PLAYER_LIVES - lives)}</span></div>
+      </div>
+      <div class="enemy-zone">
+        <div class="battle">
+          <div class="fighter left">
+            <div class="master-line" id="masterLine">${masterLine}</div>
+            <div class="enemy-emoji ${isBoss ? "bossmode" : ""}" id="enemyEmoji">${isBonus ? "🌟" : makeNinja(dan, isBoss ? 150 : 108)}</div>
+            ${isBoss ? `<div class="boss-hpbar"><div class="fill" id="bossBar"></div></div>` : ""}
+          </div>
+          <div class="vs">VS</div>
+          <div class="fighter right">
+            <div class="hero-emoji">${HERO_SVG}</div>
+          </div>
+        </div>
+        <div class="master-speech" id="qSpeech">${speechText}</div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="choice-pad" id="choicePad">
+        ${question.choices.map((c, i) => `
+          <button class="choice c${i + 1}" data-idx="${i}">
+            <span class="mark">${["①","②","③"][i]}</span>
+            <span class="val">${c}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+    s.querySelectorAll(".choice").forEach(b => {
+      b.addEventListener("click", () => answer(+b.dataset.idx, b));
+    });
+    if (isBoss) {
+      updateBossBar();
+    }
+    s.classList.toggle("bossfight", isBoss);
+    // 出題時に九九を読み上げ（問題のみ）
+    speakKuku(question.a, question.b);
+  }
+
+  function spawnShuriken() {
+    const zone = screens.playScreen.querySelector(".enemy-zone");
+    if (!zone) return;
+    const sh = document.createElement("div");
+    sh.className = "shuriken-fly";
+    sh.innerHTML = `<svg viewBox="0 0 100 100" width="42" height="42"><path d="M50 3 L60 42 L97 50 L60 58 L50 97 L40 58 L3 50 L40 42 Z" fill="#cfd8dc" stroke="#5d6d7e" stroke-width="4" stroke-linejoin="round"/></svg>`;
+    const r = zone.getBoundingClientRect();
+    const dx = (r.width / 2) * (Math.random() * 0.4 - 0.2);
+    const dy = -Math.max(120, r.height * 0.35);
+    sh.style.setProperty("--dx", dx + "px");
+    sh.style.setProperty("--dy", dy + "px");
+    zone.appendChild(sh);
+    setTimeout(() => sh.remove(), 500);
+    const sl = document.createElement("div");
+    sl.className = "slash";
+    sl.textContent = "💥";
+    zone.appendChild(sl);
+    setTimeout(() => sl.remove(), 500);
+  }
+
+  function updateBossBar() {
+    const fill = document.getElementById("bossBar");
+    if (fill) fill.style.width = (bossHp / BOSS_HP * 100) + "%";
+  }
+
+  function answer(idx, btnEl) {
+    if (!question) return;
+    const stage = STAGES[stageIdx] || { key: "bonus" };
+    const chosen = question.choices[idx];
+    const isCorrect = chosen === question.correct;
+    answeredInStage++;
+    const fb = document.getElementById("feedback");
+    const enemy = document.getElementById("enemyEmoji");
+    const pad = document.getElementById("choicePad");
+    const hudLives = document.getElementById("hudLives");
+    const p = ensurePlayer(currentPlayer);
+
+    // 記録（ボーナスは記録しない）
+    let rec = null;
+    if (!isBonus) rec = p.records[dan] = p.records[dan] || { correct: 0, wrong: 0, stages: {}, medals: [] };
+
+    // 選択肢のフィードバック表示
+    sLock();
+    pad.classList.add("disabled");
+    btnEl.classList.add(isCorrect ? "correct" : "wrong");
+    question.choices.forEach((c, i) => {
+      if (c === question.correct) pad.querySelector('[data-idx="' + i + '"]').classList.add("correct");
+    });
+
+    if (isCorrect) {
+      SFX.correct();
+      streak++;
+      totalCorrect++;
+      if (rec) rec.correct++;
+      fb.textContent = streak >= 2 ? "れんぞく" + streak + "せいかい！" : "せいかい！";
+      fb.className = "feedback show good";
+      if (enemy) { enemy.classList.add("hit"); setTimeout(() => enemy.classList.remove("hit"), 400); }
+      spawnShuriken();
+      if (isBoss) {
+        bossHp--;
+        SFX.bossHit();
+        if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
+        updateBossBar();
+        setTimeout(() => {
+          sUnlock();
+          if (bossHp <= 0) { finishStage(); return; }
+          nextQuestion();
+        }, 750);
+      } else {
+        setTimeout(() => {
+          sUnlock();
+          if (isBonus) { nextBonusQuestion(); }
+          else { nextQuestion(); }
+        }, 650);
+      }
+      setTimeout(() => fb.classList.remove("show"), 700);
+    } else {
+      SFX.wrong();
+      streak = 0;
+      mistakes++;
+      totalWrong++;
+      if (rec) rec.wrong++;
+      lives--;
+      fb.textContent = "ざんねん… せいかいは " + question.a + " × " + question.b + " ＝ " + question.correct + " だよ";
+      fb.className = "feedback show bad";
+      if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
+      if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
+      // おにぎり学習へ
+      setTimeout(() => {
+        showLearn();
+      }, 800);
+    }
+  }
+  function sLock() { }
+  function sUnlock() {
+    const pad = document.getElementById("choicePad");
+    if (pad) pad.classList.remove("disabled");
+  }
+
+  // ============ おにぎり学習 ============
+  function showLearn() {
+    stopSpeak();
+    show("learnScreen");
+    const s = screens.learnScreen;
+    const a = question.a, b = question.b;
+    s.innerHTML = `
+      <div class="topbar">
+        <button class="btn gold icon" id="btnLearnBack">◀ もどる</button>
+        <span style="font-weight:900">🍙 おにぎりでおぼえよう！</span>
+      </div>
+      <div class="learn-title">${a} × ${b} はいくつ？</div>
+      <div class="learn-q correct-answer">${a} × ${b} ＝ ${a * b}</div>
+      <div class="learn-guide">せいかいは <b>${a * b}</b> だよ！おにぎりをタップしてかずをかぞえておぼえよう。</div>
+      <div class="onigiri-area" id="ogArea"></div>
+      <div class="footer-nav">
+        <button class="btn big" id="btnLearnOk">わかった！もういちど！</button>
+      </div>
+    `;
+    const area = s.querySelector("#ogArea");
+    // bグループ × a個
+    for (let g = 0; g < b; g++) {
+      const grp = document.createElement("div");
+      grp.className = "og-group";
+      grp.innerHTML = `<div class="og-row">${"🍙".repeat(a)}</div><div class="og-count" data-g="${g}"></div>`;
+      area.appendChild(grp);
+    }
+    const groups = area.querySelectorAll(".og-group");
+    let gidx = 0;
+    const stepCount = [];
+    function highlight(i) {
+      for (let k = 0; k < groups.length; k++) {
+        if (k === i) groups[k].classList.add("hl");
+        else groups[k].classList.remove("hl");
+      }
+      if (groups[i].scrollIntoView) groups[i].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    groups.forEach((grp, i) => {
+      grp.addEventListener("click", () => {
+        if (i !== gidx) { highlight(gidx); return; }
+        SFX.click();
+        const val = a * (i + 1);
+        const cnt = grp.querySelector(".og-count");
+        cnt.textContent = "＝ " + val;
+        // ポップ
+        grp.querySelectorAll(".og").forEach((el, j) => {
+          setTimeout(() => { el.style.transform = "scale(1.4)"; }, j * 40);
+          setTimeout(() => { el.style.transform = ""; }, j * 40 + 250);
+        });
+        gidx = i + 1;
+        if (gidx < groups.length) {
+          setTimeout(() => highlight(gidx), 500);
+        } else {
+          setTimeout(() => {
+            groups[gidx - 1].querySelector(".og-count").textContent = "＝ " + (a * b) + "（せいかい！）";
+            groups[gidx - 1].classList.add("hl");
+            SFX.correct();
+          }, 300);
+        }
+      });
+    });
+    highlight(0);
+    s.querySelector("#btnLearnOk").addEventListener("click", () => {
+      SFX.click();
+      if (lives <= 0) { showGameOver(); } else { retrySameQuestion(); }
+    });
+    s.querySelector("#btnLearnBack").addEventListener("click", () => {
+      SFX.click();
+      // ステージ中断 → マップへ
+      showMapQuit();
+    });
+  }
+  function retrySameQuestion() {
+    // 同じ問題を再出題（選択肢シャッフル）
+    question = { a: question.a, b: question.b, correct: question.correct, choices: genChoices(question.correct) };
+    renderPlay();
+  }
+  function showGameOver() {
+    stopSpeak();
+    show("gameoverScreen");
+    const s = screens.gameoverScreen;
+    s.innerHTML = `
+      <div class="gameover-emoji">💦</div>
+      <div class="gameover-title">ざんねん… ハートがきれちゃった！</div>
+      <div class="gameover-sub">かんばって九九をおぼえよう。もういちど ちょうせん！</div>
+      <div class="footer-nav" style="position:static;margin-top:14px">
+        <button class="btn big" id="btnGoMap">もどる</button>
+      </div>
+    `;
+    s.querySelector("#btnGoMap").addEventListener("click", () => { SFX.click(); enterMap(); });
+  }
+  function showMapQuit() {
+    stopSpeak();
+    enterMap();
+  }
+
+  // ============ ステージ終了 ============
+  function finishStage() {
+    stopSpeak();
+    const p = ensurePlayer(currentPlayer);
+    const stage = STAGES[stageIdx];
+    const m = MASTERS[dan];
+    const rec = p.records[dan] = p.records[dan] || { correct: 0, wrong: 0, stages: {}, medals: [] };
+    // ステージクリア記録
+    rec.stages[stage.key] = true;
+
+    // メダル判定（ボス以外）
+    let medal = null;
+    if (stage.key !== "boss") {
+      medal = mistakes === 0 ? "gold" : mistakes === 1 ? "silver" : "bronze";
+      rec.medals.push(medal);
+      if (rec.medals.length > 3) rec.medals.shift();
+    }
+
+    // カード獲得：その段の「修行＋実践×2」をクリアすればボス抜きでもゲット！
+    const recStages = (p.records[dan] && p.records[dan].stages) || {};
+    const nonBoss = STAGES.filter(s => s.key !== "boss");
+    const doneNonBoss = nonBoss.every(s => recStages[s.key]);
+    const doneAll = danProgress(p)[dan] >= STAGES.length;
+    const isComplete = doneAll;
+    let newCard = null;
+    if ((doneNonBoss || doneAll) && !p.cards[dan]) {
+      p.cards[dan] = true;
+      newCard = { dan, name: m.name };
+    }
+    saveData();
+
+    // 段完了後、ボーナスチェック
+    const allCleared = danProgress(p)[1] >= 4 && danProgress(p)[2] >= 4 && danProgress(p)[3] >= 4 &&
+      danProgress(p)[4] >= 4 && danProgress(p)[5] >= 4 && danProgress(p)[6] >= 4 &&
+      danProgress(p)[7] >= 4 && danProgress(p)[8] >= 4 && danProgress(p)[9] >= 4;
+
+    show("clearScreen");
+    const s = screens.clearScreen;
+    s.innerHTML = `
+      <div class="clear-emoji">${isComplete ? "🏆" : "🎉"}</div>
+      <div class="clear-title">${isComplete ? dan + "の段 クリア！" : stage.label + " クリア！"}</div>
+      ${isComplete ? `<div class="card-reward ${newCard ? "" : "hidden"}">
+          <div class="c-emoji">${newCard ? makeNinja(newCard.dan, 70) : ""}</div>
+          <div>
+            <div class="c-name">${newCard ? newCard.name + " のカード！" : ""}</div>
+          </div>
+          <div class="c-new">NEW!</div>
+        </div>` : ""}
+      ${medal ? `<div class="medal-row">
+          <div class="medal bronze">🥉</div>
+          <div class="medal silver">🥈</div>
+          <div class="medal gold">🥇</div>
+        </div>` : ""}
+      <div class="stage-progress" id="stageProg"></div>
+      <div class="footer-nav">
+        <button class="btn big" id="btnNext">つぎへ！</button>
+      </div>
+    `;
+    // ステージ進行表示
+    const prog = s.querySelector("#stageProg");
+    STAGES.forEach((st, i) => {
+      const d = document.createElement("div");
+      d.className = "stage-dot" + (rec.stages[st.key] ? " done" : (i === stageIdx ? " now" : " lock"));
+      prog.appendChild(d);
+    });
+
+    if (medal) {
+      const medalMap = { bronze: 0, silver: 1, gold: 2 };
+      const idx = medalMap[medal];
+      SFX.medal();
+      // 獲得メダルをハイライト
+      const medals = s.querySelectorAll(".medal");
+      setTimeout(() => { medals[idx].style.transform = "scale(1.4)"; }, 600);
+    }
+    if (newCard) { SFX.card(); }
+    SFX.clear();
+
+    const btn = s.querySelector("#btnNext");
+    if (isComplete) {
+      btn.textContent = allCleared ? "ボーナスステージへ！" : "つぎの段へ！";
+    } else if (stageIdx < 3) {
+      btn.textContent = "つぎのステージへ！";
+    } else {
+      btn.textContent = "ボス戦へ！";
+    }
+    btn.addEventListener("click", () => {
+      SFX.click();
+      if (isComplete) {
+        if (allCleared) { showBonus(); return; }
+        stageIdx = 0;
+        dan++;
+        if (dan > 9) { showBonus(); return; }
+        startStage();
+      } else {
+        stageIdx++;
+        startStage();
+      }
+    });
+  }
+
+  // ============ ボーナスステージ ============
+  function showBonus() {
+    stopSpeak();
+    show("bonusScreen");
+    const s = screens.bonusScreen;
+    s.innerHTML = `
+      <div class="bonus-emoji">🌟</div>
+      <div class="clear-title">ボーナスステージ！</div>
+      <div class="speech">ぜんぶの段をマスターした、真の算数忍者だ！<br>ボーナスステージで、むちゃくちゃむずかしい九九にちょうせん！</div>
+      <div class="stage-badge boss" style="margin:6px 0">ランダムの段・まぜこぜ出題</div>
+      <div class="footer-nav" style="position:static;margin-top:10px">
+        <button class="btn big gold" id="btnBonusGo">ちょうせん！</button>
+        <button class="btn" id="btnBonusBack">◀ もどる</button>
+      </div>
+    `;
+    s.querySelector("#btnBonusGo").addEventListener("click", () => {
+      SFX.click();
+      startBonus();
+    });
+    s.querySelector("#btnBonusBack").addEventListener("click", () => { SFX.click(); enterMap(); });
+  }
+
+  function startBonus() {
+    isBoss = false;
+    isBonus = true;
+    dan = 0; // 0 = ランダム
+    lives = PLAYER_LIVES;
+    mistakes = 0;
+    answeredInStage = 0;
+    streak = 0;
+    bossHp = 0;
+    startBGM("normal");
+    nextBonusQuestion();
+  }
+
+  function nextBonusQuestion() {
+    if (answeredInStage >= bonusTotal) {
+      finishBonus();
+      return;
+    }
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    const correct = a * b;
+    question = { a, b, correct, choices: genChoices(correct) };
+    renderPlay();
+  }
+
+  function finishBonus() {
+    stopSpeak();
+    show("clearScreen");
+    const s = screens.clearScreen;
+    const p = ensurePlayer(currentPlayer);
+    // ボーナスクリア：全カードコンプ + レア
+    const complete = Object.keys(p.cards).length >= 9;
+    s.innerHTML = `
+      <div class="clear-emoji">🌟</div>
+      <div class="clear-title">ボーナスステージ クリア！</div>
+      <div class="card-reward ${complete ? "" : "hidden"}">
+        <div class="c-emoji">👑</div>
+        <div class="c-name">真の算数忍者 ジョウ</div>
+        <div class="c-new">伝説！</div>
+      </div>
+      <div class="footer-nav">
+        <button class="btn big" id="btnBonusDone">おしまい</button>
+      </div>
+    `;
+    if (complete) { p.cards["legend"] = true; saveData(); SFX.card(); }
+    SFX.clear();
+    s.querySelector("#btnBonusDone").addEventListener("click", () => { SFX.click(); enterMap(); });
+  }
+
+  // ============ カードコレクション ============
+  function renderCards() {
+    stopSpeak();
+    if (!currentPlayer && players.length) currentPlayer = players[0].name;
+    show("cardScreen");
+    const s = screens.cardScreen;
+    s.innerHTML = `
+      <div class="topbar">
+        <span style="font-weight:900">🎴 カードコレクション</span>
+        <button class="btn gold icon" id="btnCardsBack">◀ もどる</button>
+      </div>
+        <div class="screen-sub">ボスをたおして「先生」カードをゲット！（1の段〜9の段）</div>
+      <div class="card-grid" id="cardGrid"></div>
+      <div class="footer-nav">
+        <button class="btn" id="btnCardHome">🏠 ホーム</button>
+      </div>
+    `;
+    const grid = s.querySelector("#cardGrid");
+    const p = ensurePlayer(currentPlayer);
+    for (let d = 1; d <= 9; d++) {
+      const m = MASTERS[d];
+      const got = !!p.cards[d];
+      const div = document.createElement("div");
+      div.className = "card-item" + (got ? " got" : " ng");
+      div.innerHTML = `
+          <div class="c-emoji">${got ? makeNinja(d, 60) : "❓"}</div>
+        <div class="c-name">${got ? m.name : "？？？"}</div>
+        <div style="font-size:11px;color:#9a7a5a">${d}の段</div>
+      `;
+      grid.appendChild(div);
+    }
+    // 伝説カード
+    const legend = document.createElement("div");
+    legend.className = "card-item" + (p.cards["legend"] ? " got" : " ng");
+    legend.innerHTML = `
+      <div class="c-emoji">${p.cards["legend"] ? "👑" : "❓"}</div>
+      <div class="c-name">${p.cards["legend"] ? "真の算数忍者ジョウ" : "？？？"}</div>
+      <div style="font-size:11px;color:#9a7a5a">伝説</div>
+    `;
+    grid.appendChild(legend);
+    s.querySelector("#btnCardsBack").addEventListener("click", () => { SFX.click(); renderSlots(); });
+    s.querySelector("#btnCardHome").addEventListener("click", () => { SFX.click(); renderSlots(); });
+  }
+
+  // ============ 成績表 ============
+  function renderRecord() {
+    stopSpeak();
+    if (!currentPlayer && players.length) currentPlayer = players[0].name;
+    show("recordScreen");
+    const s = screens.recordScreen;
+    s.innerHTML = `
+      <div class="topbar">
+        <span style="font-weight:900">📊 成績表</span>
+        <button class="btn gold icon" id="btnRecBack">◀ もどる</button>
+      </div>
+      <div class="screen-sub">${currentPlayer ? currentPlayer + " のせいせき" : ""}</div>
+      <div class="record-wrap" id="recWrap"></div>
+      <div class="footer-nav">
+        <button class="btn" id="btnRecHome">🏠 ホーム</button>
+      </div>
+    `;
+    const p = ensurePlayer(currentPlayer);
+    const wrap = s.querySelector("#recWrap");
+
+    // 苦手な段の判定（不正解率が高い）
+    let worst = null, worstRate = -1;
+    for (let d = 1; d <= 9; d++) {
+      const r = p.records[d];
+      if (!r) continue;
+      const total = r.correct + r.wrong;
+      if (total < 3) continue;
+      const rate = r.wrong / total;
+      if (rate > worstRate) { worstRate = rate; worst = d; }
+    }
+    if (worst) {
+      const note = document.createElement("div");
+      note.className = "weak-note";
+      note.textContent = "⚠ がんばりどころ： " + worst + "の段（" + MASTERS[worst].name + "）";
+      wrap.appendChild(note);
+    }
+    let totalC = 0, totalW = 0;
+    for (let d = 1; d <= 9; d++) {
+      const r = p.records[d];
+      const m = MASTERS[d];
+      const done = (r && r.stages) ? STAGES.filter(st => r.stages[st.key]).length : 0;
+      const medals = (r && r.medals) || [];
+      const c = (r && r.correct) || 0;
+      const w = (r && r.wrong) || 0;
+      totalC += c; totalW += w;
+      const card = document.createElement("div");
+      card.className = "record-card";
+      const maxBar = Math.max(c + w, 1);
+      card.innerHTML = `
+        <div class="row-head">
+          <span class="dan-name">${makeNinja(d, 30)} ${d}の段 ${m.name}</span>
+          <span class="medals">${medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("")}${done >= 4 ? "🏆" : " (" + done + "/4)"}</span>
+        </div>
+        <div class="bars">
+          <div class="bar-row"><span class="lbl">せいかい</span><div class="bar-bg"><div class="bar good" style="width:${c / maxBar * 100}%"></div></div><span class="val">${c}</span></div>
+          <div class="bar-row"><span class="lbl">まちがい</span><div class="bar-bg"><div class="bar bad" style="width:${w / maxBar * 100}%"></div></div><span class="val">${w}</span></div>
+        </div>
+      `;
+      wrap.appendChild(card);
+    }
+    const total = document.createElement("div");
+    total.className = "record-card";
+    total.innerHTML = `<div class="row-head"><span class="dan-name">合計</span><span style="color:var(--green)">せいかい ${totalC}</span><span style="color:var(--red)">まちがい ${totalW}</span></div>`;
+    wrap.appendChild(total);
+
+    s.querySelector("#btnRecBack").addEventListener("click", () => { SFX.click(); renderSlots(); });
+    s.querySelector("#btnRecHome").addEventListener("click", () => { SFX.click(); renderSlots(); });
+  }
+
+  // ============ 初期化 ============
+  function init() {
+    setup();
+    renderTitle();
+  }
+  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState !== "loading") init();
+
+  // ============ BGM 開始（ユーザー操作後に） ============
+  document.addEventListener("pointerdown", () => { initAudio(); startBGM(); }, { once: true });
+})();
+</script>
+</body>
+</html>
