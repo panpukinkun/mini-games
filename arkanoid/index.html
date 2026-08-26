@@ -396,7 +396,7 @@
     fireCooldown -= dt;
 
     // パドル移動
-    const pSpeed = W * 0.04 * dt;
+    const pSpeed = W * 0.022 * dt;
     if (keyLeft)  paddle.x = Math.max(0, paddle.x - pSpeed);
     if (keyRight) paddle.x = Math.min(W - paddle.w, paddle.x + pSpeed);
 
