@@ -181,7 +181,7 @@
     };
   }
 
-  function ballSpeed() { return H * (0.0072 + level * 0.0009); }
+  function ballSpeed() { return H * (0.010 + level * 0.0009); }
 
   function releaseBall(b) {
     const speed = ballSpeed();
@@ -285,7 +285,7 @@
   }
 
   function weightedCapsule() {
-    const w = [["E",18],["C",14],["D",14],["L",14],["S",16],["P",6],["B",6]];
+    const w = [["E",18],["C",14],["D",14],["L",14],["S",10],["P",6],["B",6]];
     let total = 0; for (const e of w) total += e[1];
     let r = Math.random() * total;
     for (const e of w) { if ((r -= e[1]) <= 0) return e[0]; }
@@ -308,7 +308,7 @@
       case "L": laserActive = true; break;
       case "S":
         for (const b of balls) if (!b.stuck) {
-          const s = Math.hypot(b.vx, b.vy) * 0.6;
+          const s = Math.max(H * 0.009, Math.hypot(b.vx, b.vy) * 0.8);
           const a = Math.atan2(b.vy, b.vx);
           b.vx = Math.cos(a) * s; b.vy = Math.sin(a) * s;
         }
