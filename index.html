@@ -12,45 +12,65 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #eaf0ff;
     -webkit-user-select: none; user-select: none;
-    padding: 6vw 4vw 10vw;
+    overflow-x: hidden;
+    padding: clamp(16px, 4vw, 48px) clamp(12px, 3vw, 40px);
   }
-  .wrap { max-width: 760px; margin: 0 auto; }
-  header { text-align: center; margin-bottom: 7vw; }
-  header h1 { font-size: 9vw; letter-spacing: 2px; text-shadow: 0 3px 0 rgba(74,140,255,0.5); }
-  header p { font-size: 3.6vw; opacity: 0.8; margin-top: 2vw; }
+  .wrap { max-width: 880px; margin: 0 auto; width: 100%; }
 
-  .grid { display: grid; grid-template-columns: 1fr; gap: 5vw; }
-  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+  header { text-align: center; margin-bottom: clamp(20px, 5vw, 44px); }
+  header h1 {
+    font-size: clamp(28px, 6vw, 52px);
+    letter-spacing: 2px; text-shadow: 0 3px 0 rgba(74,140,255,0.5);
+    line-height: 1.2;
+  }
+  header p {
+    font-size: clamp(13px, 2.6vw, 18px);
+    opacity: 0.8; margin-top: clamp(6px, 1.5vw, 12px);
+    padding: 0 4px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(16px, 4vw, 32px);
+  }
+  @media (min-width: 600px) and (min-height: 480px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
 
   .card {
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(120,160,255,0.25);
-    border-radius: 22px; padding: 6vw 5vw;
+    border-radius: 22px;
+    padding: clamp(18px, 4.5vw, 38px) clamp(16px, 4vw, 34px);
     display: flex; flex-direction: column; align-items: center; text-align: center;
     box-shadow: 0 10px 30px rgba(0,0,0,0.35);
     transition: transform 0.12s, border-color 0.12s;
+    max-width: 100%;
   }
   .card:hover { transform: translateY(-4px); border-color: rgba(120,160,255,0.6); }
-  .icon { font-size: 16vw; line-height: 1; margin-bottom: 3vw; }
-  @media (min-width: 640px) { .icon { font-size: 84px; } }
-  .card h2 { font-size: 5.5vw; margin-bottom: 2vw; }
-  @media (min-width: 640px) { .card h2 { font-size: 26px; } }
-  .desc { font-size: 3.4vw; opacity: 0.82; line-height: 1.6; margin-bottom: 4vw; }
-  @media (min-width: 640px) { .desc { font-size: 14px; } }
+  .icon { font-size: clamp(56px, 14vw, 92px); line-height: 1; margin-bottom: clamp(8px, 2vw, 16px); }
+  .card h2 { font-size: clamp(20px, 4.5vw, 28px); margin-bottom: clamp(6px, 1.5vw, 12px); }
+  .desc { font-size: clamp(13px, 2.6vw, 15px); opacity: 0.82; line-height: 1.6; margin-bottom: clamp(14px, 3vw, 24px); }
   .play {
     display: inline-block; text-decoration: none;
-    padding: 3.2vw 10vw; font-size: 4.6vw; font-weight: 700; color: #fff;
+    padding: clamp(12px, 2.6vw, 16px) clamp(30px, 8vw, 56px);
+    font-size: clamp(16px, 3.6vw, 20px); font-weight: 700; color: #fff;
     border-radius: 999px;
     box-shadow: 0 6px 18px rgba(74,140,255,0.4);
     background: linear-gradient(135deg,#4a8cff,#7d5bff);
+    white-space: nowrap;
   }
   .play:active { transform: scale(0.96); }
-  .qr { margin-top: 4vw; background: #fff; border-radius: 14px; padding: 8px; }
-  .qr img { display: block; width: 32vw; max-width: 140px; height: auto; }
-  .qr .cap { color: #0a0e27; font-size: 3vw; font-weight: 700; margin-top: 4px; }
+  .qr { margin-top: clamp(14px, 3vw, 22px); background: #fff; border-radius: 14px; padding: 8px; }
+  .qr img { display: block; width: clamp(108px, 30vw, 148px); height: auto; }
+  .qr .cap { color: #0a0e27; font-size: clamp(11px, 2.4vw, 13px); font-weight: 700; margin-top: 4px; }
 
-  footer { text-align: center; margin-top: 8vw; font-size: 3vw; opacity: 0.7; line-height: 1.7; }
-  @media (min-width: 640px) { footer { font-size: 13px; } }
+  footer {
+    text-align: center; margin-top: clamp(24px, 6vw, 56px);
+    font-size: clamp(11px, 2.2vw, 13px); opacity: 0.7; line-height: 1.7;
+    word-break: break-all;
+  }
 </style>
 </head>
 <body>
