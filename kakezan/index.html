@@ -547,9 +547,9 @@
     if (muted) return;
     speak(kukuQuestion(a, b));
   }
-  function speakFact(a, b) {
-    if (muted) return;
-    speak(kukuFact(a, b));
+  function speakFact(a, b, onend) {
+    if (muted) { if (onend) onend(); return; }
+    speak(kukuFact(a, b), onend);
   }
 
   // 日本語音声の選択（getVoices は非同期で読み込まれるため voiceschanged を待つ）
@@ -564,18 +564,19 @@
       jpVoice = jp.find(v => v.default) || jp[0];
     } catch (e) { jpVoice = null; }
   }
-  function speak(text) {
+  function speak(text, onend) {
     try {
-      if (!window.speechSynthesis) return;
+      if (!window.speechSynthesis) { if (onend) onend(); return; }
       if (window.speechSynthesis.paused) window.speechSynthesis.resume();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
       u.rate = 0.92;
       u.pitch = 1.05;
       if (jpVoice) u.voice = jpVoice;
-      u.onerror = () => {};
+      u.onerror = () => { if (onend) onend(); };
+      u.onend = () => { if (onend) onend(); };
       window.speechSynthesis.speak(u);
-    } catch (e) { /* 音声なしでも動作 */ }
+    } catch (e) { if (onend) onend(); }
   }
   if (window.speechSynthesis) {
     pickJapaneseVoice();
@@ -1207,21 +1208,24 @@
       fb.className = "feedback show good";
       if (enemy) { enemy.classList.add("hit"); setTimeout(() => enemy.classList.remove("hit"), 400); }
       spawnShuriken();
+      // 正解時：その九九を答えまで含めて読み上げ、終わってから次へ進む
+      const goNext = () => {
+        sUnlock();
+        if (isBonus) { nextBonusQuestion(); }
+        else { nextQuestion(); }
+      };
       if (isBoss) {
         bossHp--;
         SFX.bossHit();
         if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
         updateBossBar();
         setTimeout(() => {
-          sUnlock();
           if (bossHp <= 0) { finishStage(); return; }
-          nextQuestion();
+          speakFact(question.a, question.b, goNext);
         }, 750);
       } else {
         setTimeout(() => {
-          sUnlock();
-          if (isBonus) { nextBonusQuestion(); }
-          else { nextQuestion(); }
+          speakFact(question.a, question.b, goNext);
         }, 650);
       }
       setTimeout(() => fb.classList.remove("show"), 700);
