@@ -530,31 +530,53 @@
     return s;
   }
 
-  // 九九の読み方（問題のみ・答えは言わない）：「いんいちが」
-  const KU_DAN = ["いん", "にん", "さん", "よん", "ご", "ろく", "なな", "はち", "きゅう"];
+  // 九九の読み方（現代の学校読み：いち/に/さん/よん/ご/ろく/なな/はち/きゅう）
   function kukuQuestion(a, b) {
-    return KU_DAN[a - 1] + numToKana(b) + "が";
+    return numToKana(a) + numToKana(b) + "が";
+  }
+  function kukuFact(a, b) {
+    return numToKana(a) + numToKana(b) + "が" + numToKana(a * b);
   }
   let muted = false;
   function speakKuku(a, b) {
     if (muted) return;
     speak(kukuQuestion(a, b));
   }
+  function speakFact(a, b) {
+    if (muted) return;
+    speak(kukuFact(a, b));
+  }
 
+  // 日本語音声の選択（getVoices は非同期で読み込まれるため voiceschanged を待つ）
+  let jpVoice = null;
+  function pickJapaneseVoice() {
+    try {
+      const vs = window.speechSynthesis.getVoices() || [];
+      if (!vs.length) return;
+      const jp = vs.filter(v => v.lang && v.lang.toLowerCase().replace("_", "-").startsWith("ja"));
+      if (!jp.length) return;
+      // 自然な発音の音声を優先
+      jpVoice = jp.find(v => /google|premium|natural|kyoko|otoya|hattori|tomoko|kei|ayumi|haruka/i.test(v.name))
+             || jp.find(v => /ja-jp|ja_jp/i.test(v.lang))
+             || jp[0];
+    } catch (e) { jpVoice = null; }
+  }
   function speak(text) {
     try {
+      if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
-      u.rate = 0.95;
-      u.pitch = 1.2;
-      const voices = window.speechSynthesis.getVoices();
-      const jp = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("ja"));
-      if (jp) u.voice = jp;
+      u.rate = 0.92;
+      u.pitch = 1.05;
+      if (jpVoice) u.voice = jpVoice;
       window.speechSynthesis.speak(u);
     } catch (e) { /* 音声なしでも動作 */ }
   }
-  if (window.speechSynthesis) window.speechSynthesis.getVoices();
+  if (window.speechSynthesis) {
+    pickJapaneseVoice();
+    window.speechSynthesis.onvoiceschanged = pickJapaneseVoice;
+  }
 
   // ============ Web Audio 効果音・BGM ============
   let audioCtx = null;
@@ -1198,10 +1220,12 @@
       fb.className = "feedback show bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
+      // 正しい九九の読みを聞かせる（間違えた時こそ正しく覚えてほしい）
+      setTimeout(() => speakFact(question.a, question.b), 400);
       // おにぎり学習へ
       setTimeout(() => {
         showLearn();
-      }, 800);
+      }, 900);
     }
   }
   function sLock() { }
