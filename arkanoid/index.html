@@ -47,6 +47,29 @@
   }
   #btn:active { transform: scale(0.96); }
   .hidden { display: none !important; }
+  #pauseBtn {
+    position: fixed; top: 12px; right: 12px; z-index: 20;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 2px solid #fff; background: rgba(20,28,60,0.7); color: #fff;
+    font-size: 18px; cursor: pointer; display: none;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  }
+  #pauseBtn:active { transform: scale(0.94); }
+  #pauseOverlay {
+    position: fixed; inset: 0; z-index: 30; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(8,12,38,0.9); color: #eaf0ff; text-align: center; gap: 18px;
+  }
+  #pauseOverlay h2 { font-size: clamp(22px,7vw,44px); letter-spacing: 2px; }
+  #pauseOverlay .pbtns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  #pauseOverlay button {
+    font-size: clamp(16px,5vw,22px); padding: 12px 32px; border: none; border-radius: 999px;
+    font-weight: 700; cursor: pointer; color: #fff;
+    background: linear-gradient(135deg,#4a8cff,#7d5bff);
+    box-shadow: 0 6px 20px rgba(74,140,255,0.4);
+  }
+  #pauseOverlay button.alt { background: linear-gradient(135deg,#ff7a5d,#d64541); }
+  #pauseOverlay button:active { transform: scale(0.96); }
 </style>
 </head>
 <body>
@@ -62,6 +85,15 @@
   カプセル E拡大 C捕獲 D分裂 Lレーザー S減速 P命 Bワープ<br>
   ライフが尽きてもコンティニューが3回使えます</p>
   <button id="btn">スタート</button>
+</div>
+
+<button id="pauseBtn">⏸</button>
+<div id="pauseOverlay">
+  <h2>一時停止</h2>
+  <div class="pbtns">
+    <button id="resumeBtn">再開</button>
+    <button id="topBtn" class="alt">トップへ</button>
+  </div>
 </div>
 
 <script>
@@ -169,6 +201,7 @@
   let fireCooldown = 0;
   let overlayAction = startGame;
   let banner = 0, bannerText = "";
+  let inSession = false;
 
   function newBall(stuck) {
     return {
@@ -270,6 +303,9 @@
     running = true;
     overlay.classList.add("hidden");
     last = 0;
+    inSession = true;
+    pauseOverlay.style.display = "none";
+    pauseBtn.style.display = "block";
     requestAnimationFrame(loop);
   }
 
@@ -371,6 +407,7 @@
     running = true;
     overlay.classList.add("hidden");
     last = 0;
+    inSession = true; pauseBtn.style.display = "block"; pauseOverlay.style.display = "none";
     requestAnimationFrame(loop);
   }
 
@@ -385,6 +422,7 @@
       } else {
         running = false; gameOver = true;
         overlayAction = startGame;
+        inSession = false; pauseBtn.style.display = "none";
         showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
       }
       return true;
@@ -471,11 +509,19 @@
           sfx.bossHit();
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
-            running = false; won = true;
+             running = false; won = true; inSession = false; pauseBtn.style.display = "none";
             overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
             return;
           }
         }
+      }
+
+      // ほぼ水平な反射で詰まるのを防止
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp > 0 && Math.abs(b.vy) < sp * 0.22) {
+        const sign = b.vy < 0 ? -1 : 1;
+        b.vy = sign * sp * 0.22;
+        b.vx = (b.vx < 0 ? -1 : 1) * Math.sqrt(Math.max(0, sp * sp - b.vy * b.vy));
       }
     }
     // 落下したボールを除去
@@ -524,7 +570,7 @@
           addParticles(l.x, l.y, "#ff5d5d", 8); sfx.bossHit();
           if (boss.hp <= 0) {
             boss.alive = false; score += 5000; sfx.win();
-            running = false; won = true;
+             running = false; won = true; inSession = false; pauseBtn.style.display = "none";
             overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
             return;
           }
@@ -774,6 +820,32 @@
     if (e.key === "ArrowRight") keyRight = false;
   });
   btn.addEventListener("click", () => { if (overlayAction) overlayAction(); });
+
+  const pauseBtn = document.getElementById("pauseBtn");
+  const pauseOverlay = document.getElementById("pauseOverlay");
+  pauseBtn.addEventListener("click", pauseGame);
+  pauseOverlay.querySelector("#resumeBtn").addEventListener("click", resumeGame);
+  pauseOverlay.querySelector("#topBtn").addEventListener("click", () => { location.href = "../"; });
+  window.addEventListener("keydown", e => {
+    if (e.key === "p" || e.key === "P" || e.key === "Escape") {
+      if (pauseOverlay.style.display === "flex") resumeGame();
+      else pauseGame();
+    }
+  });
+  function pauseGame() {
+    if (!running || !inSession) return;
+    running = false;
+    pauseBtn.style.display = "none";
+    pauseOverlay.style.display = "flex";
+  }
+  function resumeGame() {
+    if (!inSession) return;
+    pauseOverlay.style.display = "none";
+    pauseBtn.style.display = "block";
+    running = true;
+    last = 0;
+    requestAnimationFrame(loop);
+  }
 
   // 背景だけ描画
   draw();

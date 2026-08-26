@@ -353,6 +353,20 @@
   .enemy-emoji.bossmode { transform: scale(1.2); }
   .ninja-svg { display: block; filter: drop-shadow(0 4px 6px rgba(120,70,20,0.25)); }
   .enemy-emoji.hit .ninja-svg, .enemy-emoji.hurt .ninja-svg { animation: hitpop 0.35s; }
+  #pauseBtn2 {
+    position: fixed; top: 10px; right: 60px; z-index: 9999;
+    width: 42px; height: 42px; border-radius: 50%; border: 3px solid #fff;
+    background: var(--red); color: #fff; font-size: 18px; cursor: pointer;
+    box-shadow: 0 3px 0 rgba(0,0,0,.25); display: none;
+  }
+  #pauseBtn2:active { transform: translateY(2px); }
+  #pauseOverlay2 {
+    position: fixed; inset: 0; z-index: 10000; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    background: rgba(40,20,10,0.82);
+  }
+  #pauseOverlay2 .ptitle { font-size: 30px; font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  #pauseOverlay2 .prow { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 </style>
 </head>
 <body>
@@ -645,6 +659,7 @@
   let isBoss = false;
   let isBonus = false;
   let bonusTotal = 10;
+  let paused = false;
 
   function loadData() {
     const tryParse = (raw) => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
@@ -725,10 +740,43 @@
       if (muted) stopSpeak();
     });
     document.body.appendChild(mb);
+
+    // ポーズボタン＋オーバーレイ
+    const pb = document.createElement("button");
+    pb.id = "pauseBtn2"; pb.textContent = "⏸"; pb.title = "一時停止";
+    document.body.appendChild(pb);
+    const po = document.createElement("div");
+    po.id = "pauseOverlay2";
+    po.innerHTML = '<div class="ptitle">一時停止</div>' +
+      '<div class="prow">' +
+      '<button class="btn big" id="pResume">再開</button>' +
+      '<button class="btn big gold" id="pTop">トップへ</button>' +
+      '</div>';
+    document.body.appendChild(po);
+    pb.addEventListener("click", () => { SFX.click(); togglePause(true); });
+    po.querySelector("#pResume").addEventListener("click", () => { SFX.click(); togglePause(false); });
+    po.querySelector("#pTop").addEventListener("click", () => { location.href = "../"; });
+  }
+
+  function togglePause(p) {
+    const po = document.getElementById("pauseOverlay2");
+    if (p && !paused) {
+      paused = true; stopBGM(); stopSpeak();
+      po.style.display = "flex";
+    } else if (!p && paused) {
+      paused = false; po.style.display = "none";
+      startBGM(bgmMode);
+    }
   }
   function show(id) {
     Object.values(screens).forEach(s => s.classList.remove("active"));
     screens[id].classList.add("active");
+    const pb = document.getElementById("pauseBtn2");
+    if (pb) {
+      const inPlay = (id === "playScreen" || id === "learnScreen" || id === "bonusScreen");
+      pb.style.display = inPlay ? "block" : "none";
+      if (!inPlay && paused) togglePause(false);
+    }
   }
   function stopSpeak() { try { window.speechSynthesis.cancel(); } catch (e) {} }
 
