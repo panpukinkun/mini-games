@@ -559,6 +559,12 @@
     if (muted) { if (onend) onend(); return; }
     speak(factText(a, b, op, correct), onend);
   }
+  // ほめ言葉（こたえは よまない：たしざん・ひきざんは じぶんで かんがえるため）
+  const PRAISE = ["すごい！", "せいかい！", "よくできた！", "すばらしい！", "がんばったね！"];
+  function speakPraise(onend) {
+    if (muted) { if (onend) onend(); return; }
+    speak(PRAISE[Math.floor(Math.random() * PRAISE.length)], onend);
+  }
 
   // 日本語音声の選択（getVoices は非同期で読み込まれるため voiceschanged を待つ）
   let jpVoice = null;
@@ -630,6 +636,7 @@
     } catch (e) { audioCtx = null; }
   }
   function note(freq, dur, type, vol, delay) {
+    if (muted) return;
     try {
       if (!audioCtx) return;
       const t0 = audioCtx.currentTime + (delay || 0);
@@ -679,6 +686,7 @@
   function startBGM(mode) {
     initAudio();
     mode = mode || "normal";
+    if (muted) return;
     if (bgmTimer && bgmMode === mode) return;
     if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
     bgmMode = mode;
@@ -799,7 +807,11 @@
     mb.addEventListener("click", () => {
       muted = !muted;
       mb.textContent = muted ? "🔇" : "🔊";
-      if (muted) stopSpeak();
+      if (muted) { stopSpeak(); stopBGM(); }
+      else {
+        const inPlay = ["playScreen", "learnScreen", "bonusScreen"].some(id => screens[id] && screens[id].classList.contains("active"));
+        if (inPlay) startBGM(bgmMode);
+      }
     });
     document.body.appendChild(mb);
 
@@ -1314,12 +1326,12 @@
         updateBossBar();
         setTimeout(() => {
           if (bossHp <= 0) { finishStage(); return; }
-          speakFact2(question.a, question.b, question.op, question.correct, goNext);
+          speakPraise(goNext);
           setTimeout(goNext, 3000);
         }, 750);
       } else {
         setTimeout(() => {
-          speakFact2(question.a, question.b, question.op, question.correct, goNext);
+          speakPraise(goNext);
           setTimeout(goNext, 3000);
         }, 650);
       }
@@ -1336,8 +1348,8 @@
       fb.className = "feedback bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
-      // 正しい こたえ の よみを きかせる（まちがえたときこそ ただしく おぼえてほしい）
-      speakFact2(question.a, question.b, question.op, question.correct);
+      // こたえは よまない（じぶんで かんがえるため）。ほめのみ よみあげる
+      speak("ざんねん… もういちど！");
        // おにぎり学習へ（せいかいを よく みえるように じかんを のばす）
        setTimeout(() => {
          showLearn();
@@ -1415,7 +1427,7 @@
         done = true;
         SFX.correct();
         guide.textContent = "せいかいは " + correct + " だよ！ よくできたね！";
-        speakFact2(a, b, op, correct);
+        speak("せいかい！ よくできたね！");
       }
     });
     s.querySelector("#btnLearnOk").addEventListener("click", () => {
