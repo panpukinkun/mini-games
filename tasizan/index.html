@@ -176,6 +176,10 @@
   .q-balloon .q { color: var(--red); }
   .boss-hpbar { width: 70%; max-width: 340px; height: 18px; background: rgba(0,0,0,0.15); border-radius: 999px; margin: 8px auto 0; overflow: hidden; border: 2px solid #fff; }
   .boss-hpbar .fill { height: 100%; background: linear-gradient(90deg, #ffd97d, #d64541); width: 100%; transition: width 0.3s; }
+  .hp-name { font-size: 12px; font-weight: 900; color: #6c3483; margin-top: 4px; min-height: 16px; }
+  .hero-lives { font-size: 16px; letter-spacing: 2px; color: #d64541; margin-top: 2px; min-height: 20px; }
+  .hero-emoji { position: relative; z-index: 1; animation: heropulse 1.8s ease-in-out infinite; }
+  @keyframes heropulse { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
   .choice-pad { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
   .choice {
     display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -470,21 +474,35 @@
       intro: "さいごの ひきざん 100まで！ すべての わざを つかうぞ！",
       lines: ["100まで、ガオー！", "りゅう、れんしゅう！", "くり下がり フルスイング！", "いくぞ、ガオ！"],
       boss: "九兵衛先生、さいごのほのおをみせます！",
-      bossLines: ["ガオー！", "こらえるドラゴン！", "まだまだじゃ！", "九兵衛、ホンキ！"] }
+      bossLines: ["ガオー！", "こらえるドラゴン！", "まだまだじゃ！", "九兵衛、ホンキ！"] },
+    9: { grade: 2, op: "add", carry: false, max: 100, emoji: "🐰", name: "うさみみ先生",
+      label: "たしざん 100まで(くりあがりなし)", short: "たし 100",
+      trait: "ぴょんぴょん跳ねる元気な先生。くりあがりなしの 2けた たしざんが とくい。",
+      intro: "くりあがりなしの 100まで！ 2けたも きほんは おなじだよ！",
+      lines: ["100まで、ぴょん！", "くりあがり なしだよ！", "2けた、れんしゅう！", "うさみみ、いくよ！"],
+      boss: "うさみみ先生、とびはねて くるよ！",
+      bossLines: ["ぴょんぴょん！", "こらえるうさぎ！", "まだいけるぴょん！", "うさみみ、ホンキ！"] },
+    10: { grade: 2, op: "sub", carry: false, max: 100, emoji: "🐷", name: "ぶたさん先生",
+      label: "ひきざん 100まで(くり下がりなし)", short: "ひき 100",
+      trait: "ゆったりしたブタの先生。くり下がりなしの 2けた ひきざんを やさしく おしえる。",
+      intro: "くり下がりなしの 100まで！ 2けたも ゆっくり ひこう！",
+      lines: ["100まで、ぶひゃ！", "くり下がり なしだよ！", "2けた、れんしゅう！", "ぶたさん、いくよ！"],
+      boss: "ぶたさん先生、ホンキの たいど みせるよ！",
+      bossLines: ["ぶひっ！", "こらえるぶた！", "まだまだぶひ！", "ぶたさん、ホンキ！"] }
   };
-  const LEVEL_COUNT = 8;
+  const LEVEL_COUNT = 10;
 
   // ============ モード別レベル構成（並行進行） ============
   // たしざん / ひきざん は それぞれ 独立して すすめられる
   // （足し算を すべて クリアしなくても ひきざんを はじめられる）
   // ミックスは たしざんと ひきざんを まぜた 4段階（各段で たし/ひき を ランダム出題）
   const MODE_LEVELS = {
-    add: [1, 2, 3, 7],
-    sub: [4, 5, 6, 8],
-    mix: [11, 12, 13, 14]
+    add: [1, 2, 3, 9, 7],
+    sub: [4, 5, 6, 10, 8],
+    mix: [11, 12, 13, 15, 14]
   };
   (function buildMixLevels() {
-    const base = { 11: 1, 12: 2, 13: 3, 14: 7 };
+    const base = { 11: 1, 12: 2, 13: 3, 15: 9, 14: 7 };
     for (const mk in base) {
       const b = LEVELS[base[mk]];
       LEVELS[mk] = Object.assign({}, b, {
@@ -497,16 +515,18 @@
   })();
 
   // ============ オリジナル忍者キャラ（SVG） ============
-  const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"dragon", 11:"dog", 12:"chick", 13:"parrot", 14:"cat" };
+  const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"rabbit", 10:"pig", 11:"dog", 12:"chick", 13:"parrot", 14:"cat", 15:"rabbit" };
   function makeNinja(dan, size) {
     const animal = ANIMAL[dan] || "dog";
     const ear = {
       dog:"#b5651d", chick:"#f7c948", parrot:"#3498db", robot:"#95a5a6",
-      bear:"#a0522d", kunoichi:"#e75480", cat:"#5d6d7e", mouse:"#9e9e9e", dragon:"#27ae60"
+      bear:"#a0522d", kunoichi:"#e75480", cat:"#5d6d7e", mouse:"#9e9e9e", dragon:"#27ae60",
+      rabbit:"#f7a8c1", pig:"#f5a09a"
     }[animal];
     const accent = {
       dog:"#b5651d", chick:"#f7c948", parrot:"#3498db", robot:"#7f8c8d",
-      bear:"#a0522d", kunoichi:"#e75480", cat:"#5dade2", mouse:"#9e9e9e", dragon:"#27ae60"
+      bear:"#a0522d", kunoichi:"#e75480", cat:"#5dade2", mouse:"#9e9e9e", dragon:"#27ae60",
+      rabbit:"#f7a8c1", pig:"#f0938d"
     }[animal];
     const head = "#d64541";
     let ears = "";
@@ -517,12 +537,17 @@
     else if (animal === "dragon") ears = `<path d="M34,32 Q16,-2 52,16 Q42,28 46,42 Z" fill="${ear}" stroke="#1e8449" stroke-width="2"/><path d="M86,32 Q104,-2 68,16 Q78,28 74,42 Z" fill="${ear}" stroke="#1e8449" stroke-width="2"/>`;
     else if (animal === "chick" || animal === "parrot") ears = `<path d="M58,66 L76,80 L58,92 Z" fill="#e67e22"/>`;
     else if (animal === "kunoichi") ears = `<path d="M20,42 Q8,14 38,30 Q30,46 42,54 Z" fill="${ear}"/><path d="M100,42 Q112,14 82,30 Q90,46 78,54 Z" fill="${ear}"/><circle cx="60" cy="12" r="9" fill="${accent}"/>`;
+    else if (animal === "rabbit") ears = `<path d="M28,52 Q16,-8 48,14 Q47,36 42,52 Z" fill="${ear}"/><path d="M92,52 Q104,-8 72,14 Q73,36 78,52 Z" fill="${ear}"/>`;
+    else if (animal === "pig") ears = `<circle cx="31" cy="30" r="10" fill="${ear}"/><circle cx="89" cy="30" r="10" fill="${ear}"/>`;
     const w = size || 96;
     return `<svg viewBox="0 0 120 132" width="${w}" height="${Math.round(w*1.1)}" class="ninja-svg">
       ${ears}
+      ${animal === "pig" ? `<ellipse cx="60" cy="86" rx="7" ry="5" fill="${ear}"/>` : ""}
       <path d="M16,64 Q60,6 104,64 L104,78 Q60,46 16,78 Z" fill="${head}"/>
       <circle cx="60" cy="70" r="33" fill="#ffe0bd"/>
       <rect x="40" y="64" width="40" height="8" rx="4" fill="#2b2b2b"/>
+      <circle cx="48" cy="84" r="4.6" fill="#fff"/><circle cx="50" cy="85" r="2.2" fill="#2b2b2b"/>
+      <circle cx="72" cy="84" r="4.6" fill="#fff"/><circle cx="70" cy="85" r="2.2" fill="#2b2b2b"/>
       <path d="M24,100 Q60,120 96,100 L96,114 Q60,132 24,114 Z" fill="${accent}"/>
     </svg>`;
   }
@@ -585,22 +610,27 @@
   }
 
   // 日本語音声の選択（getVoices は非同期で読み込まれるため voiceschanged を待つ）
+  // 日本語音声が未選択のまま英語音声に fallback すると「は」が "ha" と読まれるため、
+  // 音声ロード完了を待ってから確実に日本語音声で発話する。
   let jpVoice = null;
-  function pickJapaneseVoice() {
+  let voicesReady = false;
+  function loadVoices() {
     try {
-      const vs = window.speechSynthesis.getVoices() || [];
-      if (!vs.length) return;
+      const ss = window.speechSynthesis;
+      if (!ss) return;
+      const vs = ss.getVoices() || [];
+      if (!vs.length) { jpVoice = null; voicesReady = false; return; }
       const jp = vs.filter(v => v.lang && v.lang.toLowerCase().replace("_", "-").startsWith("ja"));
-      if (!jp.length) return;
-      // 確実に動作する「デフォルトの日本語音声」を優先（名前指定だと端末によっては無音になるため）
-      jpVoice = jp.find(v => v.default) || jp[0];
+      // 複数ある場合は「デフォルトの日本語音声」を優先（名前指定だと端末によっては無音になるため）
+      jpVoice = jp.find(v => v.default) || jp[0] || null;
+      voicesReady = true;
     } catch (e) { jpVoice = null; }
   }
   function speak(text, onend) {
     try {
       const ss = window.speechSynthesis;
       if (!ss) { if (onend) onend(); return; }
-      pickJapaneseVoice();
+      if (!voicesReady) loadVoices();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "ja-JP";
       u.rate = 0.92;
@@ -609,29 +639,48 @@
       if (jpVoice) u.voice = jpVoice;
       let done = false;
       const finish = () => { if (!done) { done = true; if (onend) onend(); } };
-      u.onend = finish;
-      u.onerror = finish;
+      const fire = () => {
+        try {
+          u.onend = finish;
+          u.onerror = finish;
+          if (ss.paused) ss.resume();
+          ss.speak(u);
+        } catch (e) { finish(); }
+      };
+      // 日本語音声がまだロードされていないなら voiceschanged を待ってから発話（ha/wa ばらつき防止）
+      // ただし停止を避けるため、700ms 経過したら音声未選択でも必ず発話する（ja-JP 指定を残す）
+      if (!jpVoice) {
+        const onReady = () => {
+          window.speechSynthesis.removeEventListener("voiceschanged", onReady);
+          fire();
+        };
+        window.speechSynthesis.addEventListener("voiceschanged", onReady, { once: true });
+        setTimeout(() => {
+          window.speechSynthesis.removeEventListener("voiceschanged", onReady);
+          fire();
+        }, 700);
+        return;
+      }
       // iOS / Android で cancel() 直後の speak() が無音で落ちる既知の不具合を回避するため、
       // 少し遅らせてから発話する
       try { if (ss.speaking || ss.pending) ss.cancel(); } catch (e) {}
       setTimeout(() => {
-        try {
-          if (ss.paused) ss.resume();
-          ss.speak(u);
-        } catch (e) { finish(); }
+        try { fire(); } catch (e) { finish(); }
       }, 250);
     } catch (e) { if (onend) onend(); }
   }
   if (window.speechSynthesis) {
-    pickJapaneseVoice();
-    window.speechSynthesis.onvoiceschanged = pickJapaneseVoice;
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
     // 初回のユーザー操作で TTS をアンロック（iOS / Android で必要）
     // 空文字だと端末によって無視されるため、実際の短い音で解除する
     const primeTTS = () => {
       try {
         const ss = window.speechSynthesis;
+        loadVoices();
         const u = new SpeechSynthesisUtterance("あ");
         u.volume = 0.25; u.lang = "ja-JP";
+        if (jpVoice) u.voice = jpVoice;
         ss.speak(u);
         setTimeout(() => { try { ss.cancel(); } catch (e) {} }, 400);
       } catch (e) {}
@@ -905,7 +954,7 @@
       <div class="logo">たしざん・ひきざん忍者<span class="small">〜 れんしゅうの巻 〜</span></div>
       <div class="title-master">🥷</div>
       <div class="master-row">${masters.join("")}</div>
-      <div class="title-tag">くのいち・忍者になって、8つの「レベル」をマスターしよう！</div>
+      <div class="title-tag">くのいち・忍者になって、「レベル」をマスターして でんせつカードを ゲットしよう！</div>
       <button class="btn big" style="margin-top:14px" id="btnStart">修行をはじめる！</button>
       <div class="version">たしざん・ひきざん忍者 - Web Edition</div>
     `;
@@ -949,7 +998,7 @@
           <div class="avatar">${AVATARS[i % AVATARS.length]}</div>
           <div class="meta">
             <div class="name">${p.name}</div>
-            <div class="info">カード ${clearCount}/9 ・ ${mBadge("add")}${mBadge("sub")}${mBadge("mix")}</div>
+            <div class="info">カード ${clearCount}/${LEVEL_COUNT + 1} ・ ${mBadge("add")}${mBadge("sub")}${mBadge("mix")}</div>
           </div>
           <button class="delete" data-del="${i}">✕</button>
         `;
@@ -1210,7 +1259,7 @@
     const modeLabel = MODE_SHORT[currentMode] || "たし";
     const pos = MODE_LEVELS[currentMode].indexOf(dan) + 1;
     stopSpeak();
-    const enemyEmoji = m.emoji;
+    const enemyNinja = makeNinja(dan, isBoss ? 150 : 106);
     const sym = question.op === "add" ? "＋" : "－";
     const speechText = `${question.a} ${sym} ${question.b} は いくつ？`;
     const masterLine = isBoss ? pick(m.bossLines) : pick(m.lines);
@@ -1228,12 +1277,14 @@
         <div class="battle">
           <div class="fighter left">
             <div class="master-line" id="masterLine">${masterLine}</div>
-            <div class="enemy-emoji ${isBoss ? "bossmode" : ""}" id="enemyEmoji">${enemyEmoji}</div>
-            ${isBoss ? `<div class="boss-hpbar"><div class="fill" id="bossBar"></div></div>` : ""}
+            <div class="enemy-emoji ${isBoss ? "bossmode" : ""}" id="enemyEmoji">${enemyNinja}</div>
+            ${isBoss ? `<div class="hp-name">👹 ボスの HP</div><div class="boss-hpbar"><div class="fill" id="bossBar"></div></div>` : `<div class="hp-name">${m.name}</div>`}
           </div>
           <div class="vs">VS</div>
           <div class="fighter right">
             <div class="hero-emoji">${HERO_SVG}</div>
+            <div class="hp-name">あなたの HP</div>
+            <div class="hero-lives">${"♥".repeat(lives)}${"♡".repeat(PLAYER_LIVES - lives)}</div>
           </div>
         </div>
         <div class="master-speech" id="qSpeech">${speechText}<span class="spk" aria-hidden="true">🔊</span></div>
@@ -1287,6 +1338,12 @@
     if (fill) fill.style.width = (bossHp / BOSS_HP * 100) + "%";
   }
 
+  // 正解時の掛け声（最終問は「ステージクリア／ボス撃破」、それ以外は「次の問題です」）
+  function whatToSay(isBoss, isFinal) {
+    if (isBoss) return isFinal ? " ボスを たおした！" : " 次の問題です。";
+    return isFinal ? " ステージクリア！" : " 次の問題です。";
+  }
+
   function answer(idx, btnEl) {
     if (!question) return;
     const stage = STAGES[stageIdx] || { key: "bonus" };
@@ -1319,7 +1376,10 @@
       fb.className = "feedback show good";
       if (enemy) { enemy.classList.add("hit"); setTimeout(() => enemy.classList.remove("hit"), 400); }
       spawnShuriken();
-      // 正解時：答えと「次の問題です。」を読み上げ、終わってから次へ進む
+      // 正解時：答えと「次の問題です。」（最終問は「ステージクリア！」）を読み上げ、終わってから次へ進む
+      // ステージ最後の問では「次の問題です」と読むのは不自然なので、クリア専用の掛け声に切り替える
+      const isFinal = isBoss ? (bossHp - 1 <= 0) : (answeredInStage >= STAGES[stageIdx].count);
+      const tail = whatToSay(isBoss, isFinal);
       // onend が発火しない環境でも必ず進行するため、ガード付き goNext ＋フォールバックタイマー
       const goNext = (() => {
         let done = false;
@@ -1336,13 +1396,19 @@
         if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
         updateBossBar();
         setTimeout(() => {
-          if (bossHp <= 0) { finishStage(); return; }
-          speak("せいかい！ " + numToKana(question.correct) + "。次の問題です。", goNext);
+          if (bossHp <= 0) {
+            let fDone = false;
+            const doFinish = () => { if (!fDone) { fDone = true; finishStage(); } };
+            speak("せいかい！ ボスを たおした！", doFinish);
+            setTimeout(doFinish, 2500);
+            return;
+          }
+          speak("せいかい！ " + numToKana(question.correct) + tail, goNext);
           setTimeout(goNext, 3000);
         }, 750);
       } else {
         setTimeout(() => {
-          speak("せいかい！ " + numToKana(question.correct) + "。次の問題です。", goNext);
+          speak("せいかい！ " + numToKana(question.correct) + tail, goNext);
           setTimeout(goNext, 3000);
         }, 650);
       }
@@ -1359,12 +1425,12 @@
       fb.className = "feedback bad";
       if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
       if (hudLives) hudLives.innerHTML = "♥".repeat(Math.max(0, lives)) + "♡".repeat(PLAYER_LIVES - Math.max(0, lives));
-      // こたえは よまない（じぶんで かんがえるため）。ほめのみ よみあげる
-      speak("ざんねん… もういちど！");
-       // おにぎり学習へ（せいかいを よく みえるように じかんを のばす）
-       setTimeout(() => {
-         showLearn();
-       }, 1600);
+      // こたえは よまない（じぶんで かんがえるため）。「もういちど！」を最後まで読んでから おにぎり学習へ
+      // 短すぎると発話が途中で切れるため、発話終了(onend)を待ってから遷移する（フォールバックタイマー付き）
+      let learnShown = false;
+      const doLearn = () => { if (learnShown) return; learnShown = true; showLearn(); };
+      speak("ざんねん… もういちど！", doLearn);
+      setTimeout(doLearn, 2800);
     }
   }
   function sLock() { }
@@ -1515,7 +1581,7 @@
     }
     // 全カードコンプで伝説カード
     saveData();
-    const allCardsGot = [1,2,3,4,5,6,7,8].every(d => p.cards[d]) && p.cards["mix"];
+    const allCardsGot = [1,2,3,4,5,6,7,8,9,10].every(d => p.cards[d]) && p.cards["mix"];
     if (allCardsGot && !p.cards["legend"]) {
       p.cards["legend"] = true;
       if (!newCard) newCard = { dan: "legend", name: "真のけいさん忍者 ジョウ" };
@@ -1558,7 +1624,7 @@
       SFX.medal();
       // 獲得メダルをハイライト
       const medals = s.querySelectorAll(".medal");
-      setTimeout(() => { medals[idx].style.transform = "scale(1.4)"; }, 600);
+      setTimeout(() => { if (medals[idx]) medals[idx].style.transform = "scale(1.4)"; }, 600);
     }
     if (newCard) { SFX.card(); }
     SFX.clear();
@@ -1661,7 +1727,7 @@
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">👑</div>
         <div class="modal-name">${got ? "真のけいさん忍者ジョウ" : "？？？"}</div>
-        <div class="modal-trait">${got ? "すべてのレベルをマスターした伝説の忍者" : "8つのレベルとミックスモードをクリアで解放"}</div>
+        <div class="modal-trait">${got ? "すべてのレベルをマスターした伝説の忍者" : "すべてのレベルとミックスモードをクリアで解放"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
     } else {
