@@ -371,7 +371,9 @@
   /* 対決レイアウト */
   .battle { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 8px 0 4px; position: relative; }
   .fighter { display: flex; flex-direction: column; align-items: center; flex: 1; }
-  .fighter.right { transform: scaleX(-1); }
+  .fighter.right { /* ラベルを鏡文字にしないため、列全体の反転は行わない */ }
+  /* ヒーローだけを反転させて敵（左）のほうを向かせる（テキストは反転しない） */
+  .hero-wrap { transform: scaleX(-1); }
   .vs { font-weight: 900; font-size: 18px; color: var(--red-dark); background: #fff; border: 3px solid var(--gold); border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(120,70,20,0.2); flex: 0 0 auto; }
   .enemy-emoji.bossmode { transform: scale(1.2); }
   .ninja-svg { display: block; filter: drop-shadow(0 4px 6px rgba(120,70,20,0.25)); }
@@ -1282,7 +1284,7 @@
           </div>
           <div class="vs">VS</div>
           <div class="fighter right">
-            <div class="hero-emoji">${HERO_SVG}</div>
+            <div class="hero-wrap"><div class="hero-emoji">${HERO_SVG}</div></div>
             <div class="hp-name">あなたの HP</div>
             <div class="hero-lives">${"♥".repeat(lives)}${"♡".repeat(PLAYER_LIVES - lives)}</div>
           </div>
