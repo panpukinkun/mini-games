@@ -288,10 +288,7 @@
   .bar.good { background: var(--green); }
   .bar.bad { background: var(--red); }
   .weak-note { background: var(--gold-light); border: 2px solid var(--gold); border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 800; color: #7a5a1a; margin-bottom: 12px; }
-
-  /* ---- ボーナス ---- */
-  #bonusScreen { align-items: center; justify-content: center; text-align: center; padding: 20px; gap: 12px; }
-  .bonus-emoji { font-size: 90px; animation: bob 1.2s infinite ease-in-out; }
+  .rec-mode { font-weight: 900; font-size: 16px; color: #ffd76a; margin: 14px 0 8px; }
 
   .footer-nav { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; padding: 12px; background: rgba(255,255,255,0.85); border-top: 2px dashed rgba(214,69,65,0.2); z-index: 5; }
   .hidden { display: none !important; }
@@ -409,7 +406,6 @@
   <div class="screen" id="clearScreen"></div>
   <div class="screen" id="cardScreen"></div>
   <div class="screen" id="recordScreen"></div>
-  <div class="screen" id="bonusScreen"></div>
 </div>
 <script>
 (function () {
@@ -478,8 +474,30 @@
   };
   const LEVEL_COUNT = 8;
 
+  // ============ モード別レベル構成（並行進行） ============
+  // たしざん / ひきざん は それぞれ 独立して すすめられる
+  // （足し算を すべて クリアしなくても ひきざんを はじめられる）
+  // ミックスは たしざんと ひきざんを まぜた 4段階（各段で たし/ひき を ランダム出題）
+  const MODE_LEVELS = {
+    add: [1, 2, 3, 7],
+    sub: [4, 5, 6, 8],
+    mix: [11, 12, 13, 14]
+  };
+  (function buildMixLevels() {
+    const base = { 11: 1, 12: 2, 13: 3, 14: 7 };
+    for (const mk in base) {
+      const b = LEVELS[base[mk]];
+      LEVELS[mk] = Object.assign({}, b, {
+        op: "mix",
+        label: "ミックス " + b.label.replace(/^(たしざん|ひきざん)\s*/, ""),
+        short: "ミックス" + b.short.replace(/^(たし|ひき)\s*/, ""),
+        intro: "たしざんと ひきざんを まぜて れんしゅう！ " + b.max + "までだよ！"
+      });
+    }
+  })();
+
   // ============ オリジナル忍者キャラ（SVG） ============
-  const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"dragon" };
+  const ANIMAL = { 1:"dog", 2:"chick", 3:"parrot", 4:"robot", 5:"bear", 6:"kunoichi", 7:"cat", 8:"mouse", 9:"dragon", 11:"dog", 12:"chick", 13:"parrot", 14:"cat" };
   function makeNinja(dan, size) {
     const animal = ANIMAL[dan] || "dog";
     const ear = {
@@ -715,8 +733,8 @@
   const SAVE_KEY = "tasizanNinjaData";
   let players = loadData().players || [];
   let currentPlayer = null;   // 名前
-  let dan = 1;                // 現在のレベル 1..8
-  let mapFilter = "all";      // マップの フィルタ：all / add / sub
+  let dan = 1;                // 現在のレベル（LEVELS のキー）
+  let currentMode = "add";    // 現在のモード：add / sub / mix
   let stageIdx = 0;           // STAGES のインデックス
   let question = null;
   let lives = PLAYER_LIVES;
@@ -727,8 +745,6 @@
   let totalCorrect = 0;
   let totalWrong = 0;
   let isBoss = false;
-  let isBonus = false;
-  let bonusTotal = 10;
   let paused = false;
 
   function loadData() {
@@ -783,16 +799,31 @@
   }
   function danProgress(p) {
     const prog = {};
-    for (let d = 1; d <= LEVEL_COUNT; d++) {
+    Object.keys(LEVELS).forEach(d => {
+      d = +d;
       const rec = (p.records[d] || {}).stages || {};
-      const done = STAGES.filter(s => rec[s.key]).length;
-      prog[d] = done;
-    }
+      prog[d] = STAGES.filter(s => rec[s.key]).length;
+    });
     return prog;
   }
+  function modeOfLevel(d) {
+    d = +d;
+    for (const mode in MODE_LEVELS) {
+      if (MODE_LEVELS[mode].indexOf(d) >= 0) return mode;
+    }
+    return "add";
+  }
   function isUnlocked(p, d) {
-    if (d === 1) return true;
-    return danProgress(p)[d - 1] >= 1;
+    d = +d;
+    const mode = modeOfLevel(d);
+    const list = MODE_LEVELS[mode];
+    const idx = list.indexOf(d);
+    if (idx <= 0) return true;
+    return danProgress(p)[list[idx - 1]] >= 1;
+  }
+  function modeComplete(p, mode) {
+    const prog = danProgress(p);
+    return MODE_LEVELS[mode].every(d => prog[d] >= STAGES.length);
   }
 
   // ============ 画面切り替え ============
@@ -809,7 +840,7 @@
       mb.textContent = muted ? "🔇" : "🔊";
       if (muted) { stopSpeak(); stopBGM(); }
       else {
-        const inPlay = ["playScreen", "learnScreen", "bonusScreen"].some(id => screens[id] && screens[id].classList.contains("active"));
+        const inPlay = ["playScreen", "learnScreen"].some(id => screens[id] && screens[id].classList.contains("active"));
         if (inPlay) startBGM(bgmMode);
       }
     });
@@ -852,7 +883,7 @@
     screens[id].classList.add("active");
     const pb = document.getElementById("pauseBtn2");
     if (pb) {
-      const inPlay = (id === "playScreen" || id === "learnScreen" || id === "bonusScreen");
+      const inPlay = (id === "playScreen" || id === "learnScreen");
       pb.style.display = inPlay ? "block" : "none";
       if (!inPlay && paused) togglePause(false);
     }
@@ -912,13 +943,13 @@
       const div = document.createElement("div");
       div.className = "slot" + (p ? "" : " empty");
       if (p) {
-        const prog = danProgress(p);
         const clearCount = Object.keys(p.cards).filter(k => k !== "legend").length;
+        const mBadge = (mode) => modeComplete(p, mode) ? (mode === "add" ? "たし◎" : mode === "sub" ? "ひき◎" : "ミックス◎") : "";
         div.innerHTML = `
           <div class="avatar">${AVATARS[i % AVATARS.length]}</div>
           <div class="meta">
             <div class="name">${p.name}</div>
-            <div class="info">カード ${clearCount}/9 ・ ${prog[1]>=4?"Lv1◎":""}${prog[2]>=4?"Lv2◎":""}${prog[3]>=4?"Lv3◎":""}</div>
+            <div class="info">カード ${clearCount}/9 ・ ${mBadge("add")}${mBadge("sub")}${mBadge("mix")}</div>
           </div>
           <button class="delete" data-del="${i}">✕</button>
         `;
@@ -988,84 +1019,63 @@
         <button class="btn gold icon" id="btnBackSlot">⬅ もどる</button>
       </div>
       <div class="screen-title">🍙 けいさん道場マップ</div>
-      <div class="screen-sub">レベルの「先生」をたおして、たしざん・ひきざんをマスターしよう！</div>
+      <div class="screen-sub">モードをえらんで、たしざん・ひきざんを それぞれ すすめて マスターしよう！</div>
       <div class="filter-bar" id="filterBar">
-        <button class="fbtn" data-f="all">すべて</button>
-        <button class="fbtn" data-f="add">たしざん</button>
-        <button class="fbtn" data-f="sub">ひきざん</button>
+        <button class="fbtn" data-m="add">たしざん</button>
+        <button class="fbtn" data-m="sub">ひきざん</button>
+        <button class="fbtn" data-m="mix">ミックス</button>
       </div>
       <div class="map-grid" id="mapGrid"></div>
       <div class="footer-nav">
-        <button class="btn" id="btnMixNav">🔀 ミックス修行</button>
         <button class="btn gold" id="btnCardsNav2">🎴 カード</button>
         <button class="btn gold" id="btnRecNav2">📊 成績表</button>
       </div>
     `;
-    const grid = s.querySelector("#mapGrid");
-    const cellEls = {};
-    for (let d = 1; d <= LEVEL_COUNT; d++) {
-      const m = LEVELS[d];
-      const done = prog[d];
-      const unlocked = isUnlocked(p, d);
-      const allDone = done >= STAGES.length;
-      const medals = (p.records[d] || {}).medals || [];
-      const medalStr = medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("");
-      const div = document.createElement("div");
-      div.className = "map-cell" +
-        (allDone ? " cleared complete" : "") +
-        (unlocked && done === 0 ? " current" : "") +
-        (!unlocked ? " locked" : "");
-      div.innerHTML = `
-        <div class="dan">Lv.${d} ${m.short}</div>
-        <div class="emoji">${unlocked ? makeNinja(d, 56) : "🔒"}</div>
-        <div class="name">${m.name}</div>
-        <div class="trait">${unlocked ? m.label : "クリアして解放しよう！"}</div>
-        <div class="medals">${medalStr || ""}</div>
-      `;
-      if (unlocked) {
-        div.addEventListener("click", () => { SFX.click(); dan = d; stageIdx = 0; startStage(); });
-      }
-      grid.appendChild(div);
-      cellEls[d] = div;
-    }
-    function applyFilter() {
-      for (let d = 1; d <= LEVEL_COUNT; d++) {
-        const show = mapFilter === "all" || LEVELS[d].op === mapFilter;
-        cellEls[d].style.display = show ? "" : "none";
-      }
-      s.querySelectorAll(".fbtn").forEach(b => {
-        b.classList.toggle("active", b.dataset.f === mapFilter);
+    if (!MODE_LEVELS[currentMode]) currentMode = "add";
+    function renderGrid() {
+      const grid = s.querySelector("#mapGrid");
+      grid.innerHTML = "";
+      MODE_LEVELS[currentMode].forEach((d, i) => {
+        const m = LEVELS[d];
+        const done = prog[d];
+        const unlocked = isUnlocked(p, d);
+        const allDone = done >= STAGES.length;
+        const medals = (p.records[d] || {}).medals || [];
+        const medalStr = medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("");
+        const div = document.createElement("div");
+        div.className = "map-cell" +
+          (allDone ? " cleared complete" : "") +
+          (unlocked && done === 0 ? " current" : "") +
+          (!unlocked ? " locked" : "");
+        div.innerHTML = `
+          <div class="dan">Lv.${i + 1} ${m.short}</div>
+          <div class="emoji">${unlocked ? makeNinja(d, 56) : "🔒"}</div>
+          <div class="name">${m.name}</div>
+          <div class="trait">${unlocked ? m.label : "クリアして解放しよう！"}</div>
+          <div class="medals">${medalStr || ""}</div>
+        `;
+        if (unlocked) {
+          div.addEventListener("click", () => { SFX.click(); currentMode = modeOfLevel(d); dan = d; stageIdx = 0; startStage(); });
+        }
+        grid.appendChild(div);
       });
     }
+    function applyMode() {
+      s.querySelectorAll(".fbtn").forEach(b => b.classList.toggle("active", b.dataset.m === currentMode));
+      renderGrid();
+    }
     s.querySelectorAll(".fbtn").forEach(b => {
-      b.addEventListener("click", () => { SFX.click(); mapFilter = b.dataset.f; applyFilter(); });
+      b.addEventListener("click", () => { SFX.click(); currentMode = b.dataset.m; applyMode(); });
     });
-    applyFilter();
+    applyMode();
     s.querySelector("#btnBackSlot").addEventListener("click", () => { SFX.click(); renderSlots(); });
     s.querySelector("#btnCardsNav2").addEventListener("click", () => { SFX.click(); renderCards(); });
     s.querySelector("#btnRecNav2").addEventListener("click", () => { SFX.click(); renderRecord(); });
-    s.querySelector("#btnMixNav").addEventListener("click", () => { SFX.click(); startMix(); });
-  }
-
-  // ============ ミックス修行（すべてのレベル まぜこぜ） ============
-  function startMix() {
-    stopSpeak();
-    show("introScreen");
-    const s = screens.introScreen;
-    s.innerHTML = `
-      <button class="btn icon" id="btnMixBack" style="position:absolute;top:14px;left:14px">◀ もどる</button>
-      <div class="master-big">🔀</div>
-      <div class="master-name">ミックス修行</div>
-      <div class="stage-badge boss">すべてのレベル まぜこぜ</div>
-      <div class="speech">すべてのレベルを まぜこぜで だすぞ！ クリアすると「ミックスマスター」カードが もらえる！</div>
-      <button class="btn big" id="btnStartMix">いくぞ！</button>
-    `;
-    s.querySelector("#btnStartMix").addEventListener("click", () => { SFX.click(); startBonus(); });
-    s.querySelector("#btnMixBack").addEventListener("click", () => { SFX.click(); enterMap(); });
   }
 
   // ============ ステージ開始（導入） ============
   function startStage() {
+    currentMode = modeOfLevel(dan);
     const stage = STAGES[stageIdx];
     const m = LEVELS[dan];
     stopSpeak();
@@ -1135,7 +1145,8 @@
   }
   function genQuestion(level) {
     const L = LEVELS[level];
-    const op = L.op, carry = L.carry, MAX = L.max;
+    const carry = L.carry, MAX = L.max;
+    const op = (L.op === "mix") ? (Math.random() < 0.5 ? "add" : "sub") : L.op;
     let a, b, correct, guard = 0;
     do {
       if (++guard > 3000) { a = op === "sub" ? 2 : 1; b = 1; break; }
@@ -1160,7 +1171,6 @@
 
   function startQuestion() {
     const stage = STAGES[stageIdx];
-    isBonus = false;
     isBoss = stage.key === "boss";
     lives = PLAYER_LIVES;
     mistakes = 0;
@@ -1194,21 +1204,24 @@
   function renderPlay() {
     show("playScreen");
     const s = screens.playScreen;
-    const stage = STAGES[stageIdx] || { key: "bonus", label: "ボーナス" };
-    const m = LEVELS[dan] || { emoji: "🌟", name: "ボーナス", lines: ["ぼーなす！"], bossLines: ["ぼーなす！"] };
+    const stage = STAGES[stageIdx];
+    const m = LEVELS[dan];
+    const MODE_SHORT = { add: "たし", sub: "ひき", mix: "ミックス" };
+    const modeLabel = MODE_SHORT[currentMode] || "たし";
+    const pos = MODE_LEVELS[currentMode].indexOf(dan) + 1;
     stopSpeak();
-    const enemyEmoji = isBoss ? m.emoji : isBonus ? "🌟" : m.emoji;
+    const enemyEmoji = m.emoji;
     const sym = question.op === "add" ? "＋" : "－";
     const speechText = `${question.a} ${sym} ${question.b} は いくつ？`;
-    const masterLine = isBonus ? "まぜこぜだぞ！" : (isBoss ? pick(m.bossLines) : pick(m.lines));
+    const masterLine = isBoss ? pick(m.bossLines) : pick(m.lines);
     s.innerHTML = `
       ${isBoss ? `<div class="boss-bg"></div>` : ""}
       <div class="noren">けいさん道場</div>
       <div class="lantern" style="left:5%"></div>
       <div class="lantern" style="right:5%; animation-delay:1.2s"></div>
       <div class="topbar">
-        <div class="hud">⚔ ${isBonus ? "ボーナス" : "Lv." + dan + " " + m.short}</div>
-        <div class="hud">${stage.key === "boss" ? "👹 ボス戦" : isBonus ? "🌟 まぜこぜ" : "🔥 " + stage.label}</div>
+        <div class="hud">⚔ ${modeLabel} Lv.${pos} ${m.short}</div>
+        <div class="hud">${stage.key === "boss" ? "👹 ボス戦" : "🔥 " + stage.label}</div>
         <div class="hud">❤️ <span class="num" id="hudLives">${"♥".repeat(lives)}${"♡".repeat(PLAYER_LIVES - lives)}</span></div>
       </div>
       <div class="enemy-zone">
@@ -1286,9 +1299,8 @@
     const hudLives = document.getElementById("hudLives");
     const p = ensurePlayer(currentPlayer);
 
-    // 記録（ボーナスは記録しない）
-    let rec = null;
-    if (!isBonus) rec = p.records[dan] = p.records[dan] || { correct: 0, wrong: 0, stages: {}, medals: [] };
+    // 記録
+    const rec = p.records[dan] = p.records[dan] || { correct: 0, wrong: 0, stages: {}, medals: [] };
 
     // 選択肢のフィードバック表示
     sLock();
@@ -1307,7 +1319,7 @@
       fb.className = "feedback show good";
       if (enemy) { enemy.classList.add("hit"); setTimeout(() => enemy.classList.remove("hit"), 400); }
       spawnShuriken();
-      // 正解時：その九九を答えまで含めて読み上げ、終わってから次へ進む
+      // 正解時：答えと「次の問題です。」を読み上げ、終わってから次へ進む
       // onend が発火しない環境でも必ず進行するため、ガード付き goNext ＋フォールバックタイマー
       const goNext = (() => {
         let done = false;
@@ -1315,8 +1327,7 @@
           if (done) return;
           done = true;
           sUnlock();
-          if (isBonus) { nextBonusQuestion(); }
-          else { nextQuestion(); }
+          nextQuestion();
         };
       })();
       if (isBoss) {
@@ -1326,12 +1337,12 @@
         updateBossBar();
         setTimeout(() => {
           if (bossHp <= 0) { finishStage(); return; }
-          speak("せいかい！ " + numToKana(question.correct), goNext);
+          speak("せいかい！ " + numToKana(question.correct) + "。次の問題です。", goNext);
           setTimeout(goNext, 3000);
         }, 750);
       } else {
         setTimeout(() => {
-          speak("せいかい！ " + numToKana(question.correct), goNext);
+          speak("せいかい！ " + numToKana(question.correct) + "。次の問題です。", goNext);
           setTimeout(goNext, 3000);
         }, 650);
       }
@@ -1442,7 +1453,7 @@
   function retrySameQuestion() {
     // 同じ問題を再出題（選択肢シャッフル）
     const q = { a: question.a, b: question.b, op: question.op, correct: question.correct };
-    const maxVal = isBonus ? 100 : LEVELS[dan].max;
+    const maxVal = LEVELS[dan].max;
     q.choices = genChoices(q.correct, maxVal, candidatesFor(q.a, q.b, q.op, q.correct));
     question = q;
     renderPlay();
@@ -1485,32 +1496,39 @@
     }
 
     // カード獲得：そのレベルの「修行＋実践×2」をクリアすればボス抜きでもゲット！
+    const isMixMode = modeOfLevel(dan) === "mix";
     const recStages = (p.records[dan] && p.records[dan].stages) || {};
     const nonBoss = STAGES.filter(s => s.key !== "boss");
     const doneNonBoss = nonBoss.every(s => recStages[s.key]);
     const doneAll = danProgress(p)[dan] >= STAGES.length;
     const isComplete = doneAll;
     let newCard = null;
-    if ((doneNonBoss || doneAll) && !p.cards[dan]) {
+    if (!isMixMode && (doneNonBoss || doneAll) && !p.cards[dan]) {
       p.cards[dan] = true;
       newCard = { dan, name: m.name };
     }
+    // ミックスモード完全制覇で「ミックスマスター」カードを獲得
+    const isModeCleared = modeComplete(p, currentMode);
+    if (isMixMode && isComplete && isModeCleared && !p.cards["mix"]) {
+      p.cards["mix"] = true;
+      newCard = { dan: "mix", name: "ミックスマスター" };
+    }
+    // 全カードコンプで伝説カード
     saveData();
-
-    // レベル完了後、ボーナスチェック
-    const progAll = danProgress(p);
-    let allCleared = true;
-    for (let d = 1; d <= LEVEL_COUNT; d++) {
-      if (progAll[d] < STAGES.length) { allCleared = false; break; }
+    const allCardsGot = [1,2,3,4,5,6,7,8].every(d => p.cards[d]) && p.cards["mix"];
+    if (allCardsGot && !p.cards["legend"]) {
+      p.cards["legend"] = true;
+      if (!newCard) newCard = { dan: "legend", name: "真のけいさん忍者 ジョウ" };
+      saveData();
     }
 
     show("clearScreen");
     const s = screens.clearScreen;
     s.innerHTML = `
       <div class="clear-emoji">${isComplete ? "🏆" : "🎉"}</div>
-      <div class="clear-title">${isComplete ? dan + "レベル クリア！" : stage.label + " クリア！"}</div>
+      <div class="clear-title">${isComplete ? m.label + " クリア！" : stage.label + " クリア！"}</div>
       ${isComplete ? `<div class="card-reward ${newCard ? "" : "hidden"}">
-          <div class="c-emoji">${newCard ? makeNinja(newCard.dan, 70) : ""}</div>
+          <div class="c-emoji">${newCard ? (newCard.dan === "mix" ? "🌀" : newCard.dan === "legend" ? "👑" : makeNinja(newCard.dan, 70)) : ""}</div>
           <div>
             <div class="c-name">${newCard ? newCard.name + " のカード！" : ""}</div>
           </div>
@@ -1546,8 +1564,11 @@
     SFX.clear();
 
     const btn = s.querySelector("#btnNext");
+    const modeList = MODE_LEVELS[currentMode];
+    const levelPos = modeList.indexOf(dan);
+    const hasMoreLevels = levelPos >= 0 && levelPos < modeList.length - 1;
     if (isComplete) {
-      btn.textContent = allCleared ? "ミックス修行へ！" : "つぎのレベルへ！";
+      btn.textContent = isModeCleared ? "モードクリア！ もどる" : "つぎのレベルへ！";
     } else if (stageIdx < 3) {
       btn.textContent = "つぎのステージへ！";
     } else {
@@ -1556,98 +1577,15 @@
     btn.addEventListener("click", () => {
       SFX.click();
       if (isComplete) {
-        if (allCleared) { showBonus(); return; }
+        if (!hasMoreLevels) { enterMap(); return; }
         stageIdx = 0;
-        dan++;
-        if (dan > LEVEL_COUNT) { showBonus(); return; }
+        dan = modeList[levelPos + 1];
         startStage();
       } else {
         stageIdx++;
         startStage();
       }
     });
-  }
-
-  // ============ ミックス修行（全段クリア後のボーナス） ============
-  function showBonus() {
-    stopSpeak();
-    show("bonusScreen");
-    const s = screens.bonusScreen;
-    s.innerHTML = `
-      <div class="bonus-emoji">🌟</div>
-      <div class="clear-title">ミックス修行！</div>
-      <div class="speech">ぜんぶのレベルを マスターした、真のけいさん忍者だ！<br>ミックス修行で、むちゃくちゃ むずかしい けいさんに ちょうせん！</div>
-      <div class="stage-badge boss" style="margin:6px 0">ランダム・まぜこぜ出題</div>
-      <div class="footer-nav" style="position:static;margin-top:10px">
-        <button class="btn big gold" id="btnBonusGo">ちょうせん！</button>
-        <button class="btn" id="btnBonusBack">◀ もどる</button>
-      </div>
-    `;
-    s.querySelector("#btnBonusGo").addEventListener("click", () => {
-      SFX.click();
-      startBonus();
-    });
-    s.querySelector("#btnBonusBack").addEventListener("click", () => { SFX.click(); enterMap(); });
-  }
-
-  function startBonus() {
-    isBoss = false;
-    isBonus = true;
-    dan = 0; // 0 = ランダム
-    lives = PLAYER_LIVES;
-    mistakes = 0;
-    answeredInStage = 0;
-    streak = 0;
-    bossHp = 0;
-    startBGM("normal");
-    nextBonusQuestion();
-  }
-
-  function nextBonusQuestion() {
-    if (answeredInStage >= bonusTotal) {
-      finishBonus();
-      return;
-    }
-    const lv = 1 + Math.floor(Math.random() * LEVEL_COUNT);
-    const q = genQuestion(lv);
-    q.choices = genChoices(q.correct, 100, candidatesFor(q.a, q.b, q.op, q.correct));
-    question = q;
-    renderPlay();
-  }
-
-  function finishBonus() {
-    stopSpeak();
-    show("clearScreen");
-    const s = screens.clearScreen;
-    const p = ensurePlayer(currentPlayer);
-    // ミックス修行クリア：ミックスマスターカードを必ず獲得
-    const gotMix = !p.cards["mix"];
-    if (gotMix) p.cards["mix"] = true;
-    // 全カードコンプ時のレアカード
-    const complete = Object.keys(p.cards).length >= 9;
-    const gotLegend = complete && !p.cards["legend"];
-    if (gotLegend) p.cards["legend"] = true;
-    saveData();
-    s.innerHTML = `
-      <div class="clear-emoji">🌟</div>
-      <div class="clear-title">ミックス修行 クリア！</div>
-      <div class="card-reward">
-        <div class="c-emoji">🌀</div>
-        <div class="c-name">ミックスマスター</div>
-        <div class="c-new">NEW!</div>
-      </div>
-      ${complete ? `<div class="card-reward">
-        <div class="c-emoji">👑</div>
-        <div class="c-name">真のけいさん忍者 ジョウ</div>
-        <div class="c-new">${gotLegend ? "NEW!" : "伝説！"}</div>
-      </div>` : ""}
-      <div class="footer-nav">
-        <button class="btn big" id="btnBonusDone">おしまい</button>
-      </div>
-    `;
-    if (gotMix || gotLegend) SFX.card();
-    SFX.clear();
-    s.querySelector("#btnBonusDone").addEventListener("click", () => { SFX.click(); enterMap(); });
   }
 
   // ============ カードコレクション ============
@@ -1661,7 +1599,7 @@
         <span style="font-weight:900">🎴 カードコレクション</span>
         <button class="btn gold icon" id="btnCardsBack">◀ もどる</button>
       </div>
-        <div class="screen-sub">レベルカードはレベルクリア、ミックスカードはミックス修行クリアでゲット！</div>
+        <div class="screen-sub">レベルカードはレベルクリア、ミックスカードはミックスモード完全クリアでゲット！</div>
       <div class="card-grid" id="cardGrid"></div>
       <div class="footer-nav">
         <button class="btn" id="btnCardHome">🏠 ホーム</button>
@@ -1698,7 +1636,7 @@
     mixc.innerHTML = `
       <div class="c-emoji">${p.cards["mix"] ? "🌀" : "❓"}</div>
       <div class="c-name">${p.cards["mix"] ? "ミックスマスター" : "？？？"}</div>
-      <div style="font-size:11px;color:#9a7a5a">ミックス修行</div>
+      <div style="font-size:11px;color:#9a7a5a">ミックスモード</div>
     `;
     mixc.addEventListener("click", () => { SFX.click(); showCardDetail("mix"); });
     grid.appendChild(mixc);
@@ -1715,7 +1653,7 @@
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">🌀</div>
         <div class="modal-name">${got ? "ミックスマスター" : "？？？"}</div>
-        <div class="modal-trait">${got ? "ミックス修行をクリアした、あらゆるけいさんを つかいこなす伝説の忍者" : "ミックス修行をクリアすると解放！"}</div>
+        <div class="modal-trait">${got ? "ミックスモードを完全クリアした、あらゆるけいさんを つかいこなす伝説の忍者" : "ミックスモードをすべてクリアすると解放！"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
     } else if (key === "legend") {
@@ -1723,7 +1661,7 @@
       body.innerHTML = `
         <div class="modal-emoji" style="font-size:64px">👑</div>
         <div class="modal-name">${got ? "真のけいさん忍者ジョウ" : "？？？"}</div>
-        <div class="modal-trait">${got ? "すべてのレベルをマスターした伝説の忍者" : "8つのレベルをすべてクリアで解放"}</div>
+        <div class="modal-trait">${got ? "すべてのレベルをマスターした伝説の忍者" : "8つのレベルとミックスモードをクリアで解放"}</div>
         <div class="modal-status ${got ? "got" : "ng"}">${got ? "ゲット済み！" : "まだゲットできていない"}</div>
       `;
     } else {
@@ -1766,44 +1704,51 @@
 
     // 苦手な段の判定（不正解率が高い）
     let worst = null, worstRate = -1;
-    for (let d = 1; d <= LEVEL_COUNT; d++) {
-      const r = p.records[d];
-      if (!r) continue;
+    Object.keys(LEVELS).forEach(d => {
+      const r = p.records[+d];
+      if (!r) return;
       const total = r.correct + r.wrong;
-      if (total < 3) continue;
+      if (total < 3) return;
       const rate = r.wrong / total;
-      if (rate > worstRate) { worstRate = rate; worst = d; }
-    }
+      if (rate > worstRate) { worstRate = rate; worst = +d; }
+    });
     if (worst) {
       const note = document.createElement("div");
       note.className = "weak-note";
-      note.textContent = "⚠ がんばりどころ： Lv." + worst + " " + LEVELS[worst].label + "（" + LEVELS[worst].name + "）";
+      note.textContent = "⚠ がんばりどころ： " + LEVELS[worst].label + "（" + LEVELS[worst].name + "）";
       wrap.appendChild(note);
     }
+    const MODE_NAMES = { add: "たしざん", sub: "ひきざん", mix: "ミックス" };
     let totalC = 0, totalW = 0;
-    for (let d = 1; d <= LEVEL_COUNT; d++) {
-      const r = p.records[d];
-      const m = LEVELS[d];
-      const done = (r && r.stages) ? STAGES.filter(st => r.stages[st.key]).length : 0;
-      const medals = (r && r.medals) || [];
-      const c = (r && r.correct) || 0;
-      const w = (r && r.wrong) || 0;
-      totalC += c; totalW += w;
-      const card = document.createElement("div");
-      card.className = "record-card";
-      const maxBar = Math.max(c + w, 1);
-      card.innerHTML = `
-        <div class="row-head">
-          <span class="dan-name">${makeNinja(d, 30)} Lv.${d} ${m.name}</span>
-          <span class="medals">${medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("")}${done >= 4 ? "🏆" : " (" + done + "/4)"}</span>
-        </div>
-        <div class="bars">
-          <div class="bar-row"><span class="lbl">せいかい</span><div class="bar-bg"><div class="bar good" style="width:${c / maxBar * 100}%"></div></div><span class="val">${c}</span></div>
-          <div class="bar-row"><span class="lbl">まちがい</span><div class="bar-bg"><div class="bar bad" style="width:${w / maxBar * 100}%"></div></div><span class="val">${w}</span></div>
-        </div>
-      `;
-      wrap.appendChild(card);
-    }
+    ["add", "sub", "mix"].forEach(mode => {
+      const head = document.createElement("div");
+      head.className = "rec-mode";
+      head.textContent = "■ " + MODE_NAMES[mode];
+      wrap.appendChild(head);
+      MODE_LEVELS[mode].forEach((d, i) => {
+        const r = p.records[d];
+        const m = LEVELS[d];
+        const done = (r && r.stages) ? STAGES.filter(st => r.stages[st.key]).length : 0;
+        const medals = (r && r.medals) || [];
+        const c = (r && r.correct) || 0;
+        const w = (r && r.wrong) || 0;
+        totalC += c; totalW += w;
+        const card = document.createElement("div");
+        card.className = "record-card";
+        const maxBar = Math.max(c + w, 1);
+        card.innerHTML = `
+          <div class="row-head">
+            <span class="dan-name">${makeNinja(d, 30)} Lv.${i + 1} ${m.name}</span>
+            <span class="medals">${medals.map(x => x === "gold" ? "🥇" : x === "silver" ? "🥈" : "🥉").join("")}${done >= STAGES.length ? "🏆" : " (" + done + "/" + STAGES.length + ")"}</span>
+          </div>
+          <div class="bars">
+            <div class="bar-row"><span class="lbl">せいかい</span><div class="bar-bg"><div class="bar good" style="width:${c / maxBar * 100}%"></div></div><span class="val">${c}</span></div>
+            <div class="bar-row"><span class="lbl">まちがい</span><div class="bar-bg"><div class="bar bad" style="width:${w / maxBar * 100}%"></div></div><span class="val">${w}</span></div>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    });
     const total = document.createElement("div");
     total.className = "record-card";
     total.innerHTML = `<div class="row-head"><span class="dan-name">合計</span><span style="color:var(--green)">せいかい ${totalC}</span><span style="color:var(--red)">まちがい ${totalW}</span></div>`;
