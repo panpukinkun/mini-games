@@ -105,12 +105,21 @@
         <a class="play" href="tasizan/">遊ぶ</a>
         <div class="qr"><img id="qr-tasizan" alt="たしざん・ひきざん忍者 QRコード"><div class="cap">スマホで読み取り</div></div>
       </div>
+
+      <div class="card">
+        <div class="icon">🧩</div>
+        <h2>テトリス風</h2>
+        <div class="desc">ブロックを回してそろえて消そう。<br>7種のピース・ホールド・ゴースト・Tスピン対応。</div>
+        <a class="play" href="tetris/">遊ぶ</a>
+        <div class="qr"><img id="qr-tetris" alt="テトリス風 QRコード"><div class="cap">スマホで読み取り</div></div>
+      </div>
     </div>
 
     <footer>
       https://panpukinkun.github.io/mini-games/arkanoid/<br>
       https://panpukinkun.github.io/mini-games/kakezan/<br>
       https://panpukinkun.github.io/mini-games/tasizan/<br>
+      https://panpukinkun.github.io/mini-games/tetris/<br>
       ※ IP入力・パスワード不要。GitHub Pages で公開中のため、あなたの Mac に接続せずに複数人で同時に遊べます。
     </footer>
   </div>
@@ -128,7 +137,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   var GAMES = [
     {id:'qr-arkanoid', url:'https://panpukinkun.github.io/mini-games/arkanoid/'},
     {id:'qr-kakezan', url:'https://panpukinkun.github.io/mini-games/kakezan/'},
-    {id:'qr-tasizan', url:'https://panpukinkun.github.io/mini-games/tasizan/'}
+    {id:'qr-tasizan', url:'https://panpukinkun.github.io/mini-games/tasizan/'},
+    {id:'qr-tetris', url:'https://panpukinkun.github.io/mini-games/tetris/'}
   ];
   function makeQR(img, url){
     try {
