@@ -83,7 +83,7 @@
   Mac: マウス移動 / ←→ / スペースで発射・レーザー<br>
   Android: 指でスライド / タップで発射・レーザー<br>
   カプセル E拡大 C捕獲 D分裂 Lレーザー S減速 P命 Bワープ<br>
-  ライフが尽きてもコンティニューが3回使えます</p>
+  ライフが尽きてもコンティニューが3回使えます<br>ボス戦：ボスの弾をパドルで跳ね返してボスにダメージを与えよう</p>
   <button id="btn">スタート</button>
 </div>
 
@@ -162,6 +162,7 @@
   // ---- 論理解像度 ----
   let W = 0, H = 0, DPR = 1;
   function resize() {
+    const oldW = W, oldH = H;
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     const availW = window.innerWidth, availH = window.innerHeight;
     const targetRatio = 3 / 4;
@@ -173,6 +174,17 @@
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (oldW > 0 && paddle) {
+      const sx = W / oldW, sy = H / oldH;
+      paddle.w *= sx; paddle.baseW *= sx; paddle.h = H * 0.02;
+      paddle.x *= sx; paddle.y = H - H * 0.08;
+      for (const b of balls) { b.x *= sx; b.y *= sy; b.r = W * 0.016; }
+      for (const k of bricks) { k.x *= sx; k.y *= sy; k.w *= sx; k.h *= sy; }
+      for (const c of capsules) { c.x *= sx; c.y *= sy; c.w *= sx; c.h *= sy; }
+      for (const l of lasers) { l.x *= sx; l.y *= sy; }
+      for (const bl of bossBullets) { bl.x *= sx; bl.y *= sy; bl.r *= sx; }
+      if (boss) { boss.x *= sx; boss.y *= sy; boss.r = W * 0.13; }
+    }
   }
   window.addEventListener("resize", resize);
   resize();
@@ -194,8 +206,8 @@
     B: { color: "#ffd24a", label: "B" }
   };
 
-  let paddle, balls, bricks, capsules, lasers, particles, boss, bossBullets;
-  let score, lives, continues, level, running, gameOver, won;
+  let paddle, balls, bricks, capsules, lasers, particles, boss, bossBullets, reflectBullets;
+  let score, lives, continues, level, running;
   let keyLeft = false, keyRight = false;
   let laserActive = false, catchActive = false;
   let fireCooldown = 0;
@@ -266,8 +278,8 @@
         if (skipPattern(lv, r, c, rows, cols)) continue;
         let type = "normal";
         const rnd = Math.random();
-        const steelCh = Math.min(0.02 + level * 0.010, 0.13);
-        const metalCh = Math.min(0.06 + level * 0.011, 0.24);
+        const steelCh = Math.min(0.02 + lv * 0.010, 0.13);
+        const metalCh = Math.min(0.06 + lv * 0.011, 0.24);
         if (rnd < steelCh) type = "steel";
         else if (rnd < steelCh + metalCh) type = "metal";
         arr.push({
@@ -287,14 +299,14 @@
   }
 
   function buildLevel() {
-    capsules = []; lasers = []; particles = []; bossBullets = [];
+    capsules = []; lasers = []; particles = []; bossBullets = []; reflectBullets = [];
     if (level >= BOSS_LEVEL) { bricks = []; createBoss(); }
     else { bricks = generateBricks(level); boss = null; }
   }
 
   function startGame() {
     initAudio();
-    score = 0; lives = 3; continues = 3; level = 0; won = false; gameOver = false;
+    score = 0; lives = 3; continues = 3; level = 0;
     paddle = { x: 0, y: 0, w: 0, h: 0, baseW: W * 0.18 };
     paddle.w = paddle.baseW;
     buildLevel();
@@ -341,6 +353,26 @@
     capsules.push({ x: x - cw / 2, y: y, w: cw, h: ch, type });
   }
 
+  function hitBoss(x, y) {
+    boss.hp--; boss.hitFlash = 8;
+    addParticles(x, y, "#ff5d5d", 10); sfx.bossHit();
+    if (Math.random() < 0.12) spawnBossCapsule(x, y);
+    if (boss.hp <= 0) {
+      boss.alive = false; score += 5000; sfx.win();
+      running = false; inSession = false; pauseBtn.style.display = "none";
+      overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
+    }
+  }
+
+  function reflectBossBullet(bl) {
+    const hit = Math.max(-1, Math.min(1, (bl.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2)));
+    const ang = -Math.PI / 2 + hit * (Math.PI / 3);
+    const speed = H * 0.022;
+    reflectBullets.push({ x: bl.x, y: paddle.y - bl.r - 2, r: bl.r,
+                          vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed });
+    sfx.paddle();
+  }
+
   function applyCapsule(type) {
     sfx.capsule();
     score += 1000;
@@ -365,12 +397,14 @@
 
   function disrupt() {
     const extra = [];
-    for (const b of balls) {
-      if (b.stuck || balls.length + extra.length >= 8) continue;
+    const startCount = balls.length;
+    for (const b of balls.slice()) {
+      if (b.stuck) continue;
+      if (startCount + extra.length >= 8) break;
       const a = Math.atan2(b.vy, b.vx);
       const s = Math.hypot(b.vx, b.vy);
       for (const da of [-0.4, 0.4]) {
-        if (balls.length + extra.length >= 8) break;
+        if (startCount + extra.length >= 8) break;
         extra.push({
           x: b.x, y: b.y, r: b.r,
           vx: Math.cos(a + da) * s, vy: Math.sin(a + da) * s,
@@ -409,7 +443,7 @@
     paddle.w = paddle.baseW;
     laserActive = false; catchActive = false;
     balls = [newBall(true)];
-    bossBullets = [];
+    bossBullets = []; reflectBullets = [];
     banner = 70; bannerText = "CONTINUE";
     running = true;
     overlay.classList.add("hidden");
@@ -427,7 +461,7 @@
         overlayAction = continueGame;
         showOverlay("コンティニューしますか？", "残りコンティニュー: " + continues + " 回<br>スコア: " + score, "コンティニュー");
       } else {
-        running = false; gameOver = true;
+        running = false;
         overlayAction = startGame;
         inSession = false; pauseBtn.style.display = "none";
         showOverlay("ゲームオーバー", "スコア: " + score, "もう一度");
@@ -485,7 +519,13 @@
             b.y + b.r > k.y && b.y - b.r < k.y + k.h) {
           const ox = Math.min(b.x + b.r - k.x, k.x + k.w - (b.x - b.r));
           const oy = Math.min(b.y + b.r - k.y, k.y + k.h - (b.y - b.r));
-          if (ox < oy) b.vx *= -1; else b.vy *= -1;
+          if (ox < oy) {
+            b.vx *= -1;
+            if (b.x < k.x + k.w / 2) b.x = k.x - b.r; else b.x = k.x + k.w + b.r;
+          } else {
+            b.vy *= -1;
+            if (b.y < k.y + k.h / 2) b.y = k.y - b.r; else b.y = k.y + k.h + b.r;
+          }
           if (k.type === "steel") { sfx.steel(); break; }
           k.hits--;
           if (k.hits <= 0) {
@@ -511,16 +551,7 @@
           b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
            b.x = boss.x + nx * (boss.r + b.r + 1);
            b.y = boss.y + ny * (boss.r + b.r + 1);
-           boss.hp--; boss.hitFlash = 8;
-           addParticles(b.x, b.y, "#ff5d5d", 10);
-           sfx.bossHit();
-           if (Math.random() < 0.12) spawnBossCapsule(b.x, b.y);
-          if (boss.hp <= 0) {
-            boss.alive = false; score += 5000; sfx.win();
-             running = false; won = true; inSession = false; pauseBtn.style.display = "none";
-            overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
-            return;
-          }
+           hitBoss(b.x, b.y);
         }
       }
 
@@ -536,7 +567,7 @@
     balls = balls.filter(b => !(b.y - b.r > H));
 
     if (balls.length === 0 && running) {
-      if (boss) bossBullets = [];
+      if (boss) { bossBullets = []; reflectBullets = []; }
       if (loseLife()) return;
       resetBall();
       return;
@@ -574,15 +605,8 @@
       if (boss && boss.alive && !l.dead) {
         const dx = l.x - boss.x, dy = l.y - boss.y;
         if (dx * dx + dy * dy < boss.r * boss.r) {
-          boss.hp--; boss.hitFlash = 8; l.dead = true;
-          addParticles(l.x, l.y, "#ff5d5d", 8); sfx.bossHit();
-          if (Math.random() < 0.12) spawnBossCapsule(l.x, l.y);
-          if (boss.hp <= 0) {
-            boss.alive = false; score += 5000; sfx.win();
-             running = false; won = true; inSession = false; pauseBtn.style.display = "none";
-            overlayAction = startGame; showOverlay("DOH 撃破！", "スコア: " + score, "もう一度");
-            return;
-          }
+          l.dead = true;
+          hitBoss(l.x, l.y);
         }
       }
     }
@@ -621,16 +645,37 @@
         if (bl.y + bl.r >= paddle.y && bl.y - bl.r <= paddle.y + paddle.h &&
             bl.x >= paddle.x && bl.x <= paddle.x + paddle.w) {
           bl.dead = true;
-          if (loseLife()) return;
+          reflectBossBullet(bl);
         }
       }
       bossBullets = bossBullets.filter(bl => !bl.dead && bl.y - bl.r < H && bl.x > -20 && bl.x < W + 20);
+    }
+
+    // 反射弾（ボス弾をパドルで跳ね返したもの）
+    if (reflectBullets.length) {
+      for (const rb of reflectBullets) {
+        rb.x += rb.vx * dt; rb.y += rb.vy * dt;
+        if (rb.x - rb.r < 0) { rb.x = rb.r; rb.vx *= -1; }
+        if (rb.x + rb.r > W) { rb.x = W - rb.r; rb.vx *= -1; }
+        if (rb.y - rb.r < 0) { rb.y = rb.r; rb.vy *= -1; }
+        if (boss && boss.alive) {
+          const dx = rb.x - boss.x, dy = rb.y - boss.y;
+          if (dx * dx + dy * dy < (boss.r + rb.r) * (boss.r + rb.r)) {
+            hitBoss(rb.x, rb.y);
+            rb.dead = true;
+          }
+        }
+      }
+      reflectBullets = reflectBullets.filter(rb => !rb.dead && rb.y - rb.r < H);
     }
 
     // クリア判定（通常面）
     if (boss == null && running) {
       const dmg = bricks.filter(k => k.type !== "steel");
       if (dmg.length > 0 && dmg.every(k => !k.alive)) {
+        for (const k of bricks) if (k.type === "steel" && k.alive) {
+          k.alive = false; addParticles(k.x + k.w / 2, k.y + k.h / 2, k.color, 6);
+        }
         sfx.level();
         advanceLevel();
         return;
@@ -642,6 +687,8 @@
       p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.2 * dt; p.life -= 0.03 * dt;
     }
     particles = particles.filter(p => p.life > 0);
+
+    if (banner > 0) banner -= dt;
   }
 
   function roundRect(x, y, w, h, r) {
@@ -661,6 +708,8 @@
     ctx.lineWidth = 1;
     for (let i = 0; i < W; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
     for (let i = 0; i < H; i += 30) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); }
+
+    if (!paddle) return; // ゲーム開始前は背景グリッドのみ描画
 
     // ブロック
     for (const k of bricks) {
@@ -726,6 +775,14 @@
       ctx.beginPath(); ctx.arc(bl.x, bl.y, bl.r * 0.5, 0, 7); ctx.fill();
     }
 
+    // 反射弾
+    for (const rb of reflectBullets) {
+      ctx.fillStyle = "#7dffea";
+      ctx.beginPath(); ctx.arc(rb.x, rb.y, rb.r, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath(); ctx.arc(rb.x - rb.r * 0.3, rb.y - rb.r * 0.3, rb.r * 0.35, 0, 7); ctx.fill();
+    }
+
     // ボール
     for (const b of balls) {
       ctx.fillStyle = "#ffd24a";
@@ -767,7 +824,6 @@
       ctx.font = "bold " + Math.round(H * 0.06) + "px sans-serif";
       ctx.fillText(bannerText, W / 2, H * 0.42);
       ctx.globalAlpha = 1;
-      banner -= 1;
     }
 
     // 発射ヒント
@@ -808,11 +864,11 @@
     const x = pointerX(clientX);
     paddle.x = Math.max(0, Math.min(W - paddle.w, x - paddle.w / 2));
   }
-  canvas.addEventListener("mousemove", e => { if (running) movePaddle(e.clientX); });
-  canvas.addEventListener("mousedown", e => { if (running) { movePaddle(e.clientX); fire(); } });
+  canvas.addEventListener("mousemove", e => { if (running && !keyLeft && !keyRight) movePaddle(e.clientX); });
+  canvas.addEventListener("mousedown", e => { if (running) { fire(); } });
   canvas.addEventListener("touchstart", e => {
     if (!running) return; e.preventDefault();
-    movePaddle(e.touches[0].clientX); fire();
+    fire();
   }, { passive: false });
   canvas.addEventListener("touchmove", e => {
     if (!running) return; e.preventDefault();
@@ -820,8 +876,8 @@
   }, { passive: false });
   window.addEventListener("keydown", e => {
     if (!running) return;
-    if (e.key === "ArrowLeft")  keyLeft = true;
-    if (e.key === "ArrowRight") keyRight = true;
+    if (e.key === "ArrowLeft")  { keyLeft = true; e.preventDefault(); }
+    if (e.key === "ArrowRight") { keyRight = true; e.preventDefault(); }
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); fire(); }
   });
   window.addEventListener("keyup", e => {

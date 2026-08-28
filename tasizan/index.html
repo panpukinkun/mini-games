@@ -631,6 +631,7 @@
   function speak(text, onend) {
     try {
       const ss = window.speechSynthesis;
+      if (muted) { if (onend) onend(); return; }
       if (!ss) { if (onend) onend(); return; }
       if (!voicesReady) loadVoices();
       const u = new SpeechSynthesisUtterance(text);
@@ -797,6 +798,8 @@
   let totalWrong = 0;
   let isBoss = false;
   let paused = false;
+  let pendingAdvance = false;
+  let pendingLearn = false;
 
   function loadData() {
     const tryParse = (raw) => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
@@ -927,6 +930,8 @@
     } else if (!p && paused) {
       paused = false; po.style.display = "none";
       startBGM(bgmMode);
+      if (pendingAdvance) { pendingAdvance = false; nextQuestion(); }
+      else if (pendingLearn) { pendingLearn = false; showLearn(); }
     }
   }
   function show(id) {
@@ -1152,9 +1157,15 @@
 
   // ============ 出題 ============
   // 選択肢生成（dan に依存しない。maxVal で正答の取りうる最大値を指定）
-  function genChoices(correct, maxVal) {
+  function genChoices(correct, maxVal, candidates) {
     maxVal = maxVal || 81;
     const opts = new Set([correct]);
+    if (Array.isArray(candidates)) {
+      for (const c of candidates) {
+        if (typeof c === "number" && c > 0 && c <= maxVal && c !== correct) opts.add(c);
+        if (opts.size >= 3) break;
+      }
+    }
     let guard = 0;
     while (opts.size < 3) {
       if (++guard > 500) break;
@@ -1226,6 +1237,8 @@
     lives = PLAYER_LIVES;
     mistakes = 0;
     answeredInStage = 0;
+    pendingAdvance = false;
+    pendingLearn = false;
     streak = 0;
     bossHp = isBoss ? BOSS_HP : 0;
     startBGM(isBoss ? "boss" : "normal");
@@ -1351,7 +1364,6 @@
     const stage = STAGES[stageIdx] || { key: "bonus" };
     const chosen = question.choices[idx];
     const isCorrect = chosen === question.correct;
-    answeredInStage++;
     const fb = document.getElementById("feedback");
     const enemy = document.getElementById("enemyEmoji");
     const pad = document.getElementById("choicePad");
@@ -1373,6 +1385,7 @@
       SFX.correct();
       streak++;
       totalCorrect++;
+      answeredInStage++;
       if (rec) rec.correct++;
       fb.textContent = streak >= 2 ? "れんぞく" + streak + "せいかい！" : "せいかい！";
       fb.className = "feedback show good";
@@ -1388,6 +1401,7 @@
         return () => {
           if (done) return;
           done = true;
+          if (paused) { pendingAdvance = true; return; }
           sUnlock();
           nextQuestion();
         };
@@ -1398,9 +1412,10 @@
         if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
         updateBossBar();
         setTimeout(() => {
+          if (paused) { pendingAdvance = true; return; }
           if (bossHp <= 0) {
             let fDone = false;
-            const doFinish = () => { if (!fDone) { fDone = true; finishStage(); } };
+            const doFinish = () => { if (fDone) return; fDone = true; if (paused) { pendingAdvance = true; return; } finishStage(); };
             speak("せいかい！ ボスを たおした！", doFinish);
             setTimeout(doFinish, 2500);
             return;
@@ -1410,6 +1425,7 @@
         }, 750);
       } else {
         setTimeout(() => {
+          if (paused) { pendingAdvance = true; return; }
           speak("せいかい！ " + numToKana(question.correct) + tail, goNext);
           setTimeout(goNext, 3000);
         }, 650);
@@ -1430,9 +1446,9 @@
       // こたえは よまない（じぶんで かんがえるため）。「もういちど！」を最後まで読んでから おにぎり学習へ
       // 短すぎると発話が途中で切れるため、発話終了(onend)を待ってから遷移する（フォールバックタイマー付き）
       let learnShown = false;
-      const doLearn = () => { if (learnShown) return; learnShown = true; showLearn(); };
+      const doLearn = () => { if (learnShown) return; learnShown = true; if (paused) { pendingLearn = true; return; } showLearn(); };
       speak("ざんねん… もういちど！", doLearn);
-      setTimeout(doLearn, 2800);
+      setTimeout(() => { if (paused) { pendingLearn = true; return; } doLearn(); }, 2800);
     }
   }
   function sLock() { }
@@ -1528,6 +1544,7 @@
   }
   function showGameOver() {
     stopSpeak();
+    stopBGM();
     show("gameoverScreen");
     const s = screens.gameoverScreen;
     s.innerHTML = `
@@ -1548,6 +1565,7 @@
   // ============ ステージ終了 ============
   function finishStage() {
     stopSpeak();
+    stopBGM();
     const p = ensurePlayer(currentPlayer);
     const stage = STAGES[stageIdx];
     const m = LEVELS[dan];
@@ -1827,7 +1845,10 @@
   }
 
   // ============ 初期化 ============
+  let inited = false;
   function init() {
+    if (inited) return;
+    inited = true;
     setup();
     renderTitle();
   }
@@ -1836,6 +1857,18 @@
 
   // ============ BGM 開始（ユーザー操作後に） ============
   document.addEventListener("pointerdown", () => { initAudio(); startBGM(); }, { once: true });
+
+  // ============ キーボード回答ショートカット（1/2/3） ============
+  window.addEventListener("keydown", e => {
+    if (e.key !== "1" && e.key !== "2" && e.key !== "3") return;
+    if (paused || !question) return;
+    if (!screens.playScreen.classList.contains("active")) return;
+    const pad = document.getElementById("choicePad");
+    if (!pad || pad.classList.contains("disabled")) return;
+    const idx = parseInt(e.key, 10) - 1;
+    const btn = pad.querySelector('[data-idx="' + idx + '"]');
+    if (btn) { e.preventDefault(); answer(idx, btn); }
+  });
 })();
 </script>
 </body>

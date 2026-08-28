@@ -1088,7 +1088,6 @@
     const stage = STAGES[stageIdx] || { key: "bonus" };
     const chosen = question.choices[idx];
     const isCorrect = chosen === question.correct;
-    answeredInStage++;
     const fb = document.getElementById("feedback");
     const enemy = document.getElementById("enemyEmoji");
     const pad = document.getElementById("choicePad");
@@ -1111,6 +1110,7 @@
       SFX.correct();
       streak++;
       totalCorrect++;
+      answeredInStage++;
       if (rec) rec.correct++;
       fb.textContent = streak >= 2 ? "れんぞく" + streak + "せいかい！" : "せいかい！";
       fb.className = "feedback show good";
@@ -1302,9 +1302,7 @@
           <div class="c-new">NEW!</div>
         </div>` : ""}
       ${medal ? `<div class="medal-row">
-          <div class="medal bronze">🥉</div>
-          <div class="medal silver">🥈</div>
-          <div class="medal gold">🥇</div>
+          <div class="medal ${medal}">${medal === "gold" ? "🥇" : medal === "silver" ? "🥈" : "🥉"}</div>
         </div>` : ""}
       <div class="stage-progress" id="stageProg"></div>
       <div class="footer-nav">
@@ -1320,12 +1318,10 @@
     });
 
     if (medal) {
-      const medalMap = { bronze: 0, silver: 1, gold: 2 };
-      const idx = medalMap[medal];
       SFX.medal();
       // 獲得メダルをハイライト
-      const medals = s.querySelectorAll(".medal");
-      setTimeout(() => { medals[idx].style.transform = "scale(1.4)"; }, 600);
+      const mEl = s.querySelector(".medal");
+      if (mEl) setTimeout(() => { mEl.style.transform = "scale(1.4)"; }, 600);
     }
     if (newCard) { SFX.card(); }
     SFX.clear();
@@ -1570,7 +1566,10 @@
   }
 
   // ============ 初期化 ============
+  let inited = false;
   function init() {
+    if (inited) return;
+    inited = true;
     setup();
     renderTitle();
   }
@@ -1579,6 +1578,18 @@
 
   // ============ BGM 開始（ユーザー操作後に） ============
   document.addEventListener("pointerdown", () => { initAudio(); startBGM(); }, { once: true });
+
+  // ============ キーボード回答ショートカット（1/2/3） ============
+  window.addEventListener("keydown", e => {
+    if (e.key !== "1" && e.key !== "2" && e.key !== "3") return;
+    if (!question) return;
+    if (!screens.playScreen.classList.contains("active")) return;
+    const pad = document.getElementById("choicePad");
+    if (!pad || pad.classList.contains("disabled")) return;
+    const idx = parseInt(e.key, 10) - 1;
+    const btn = pad.querySelector('[data-idx="' + idx + '"]');
+    if (btn) { e.preventDefault(); answer(idx, btn); }
+  });
 })();
 </script>
 </body>

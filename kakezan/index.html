@@ -708,6 +708,8 @@
   let isBonus = false;
   let bonusTotal = 10;
   let paused = false;
+  let pendingAdvance = false;
+  let pendingLearn = false;
 
   function loadData() {
     const tryParse = (raw) => { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } };
@@ -819,6 +821,8 @@
     } else if (!p && paused) {
       paused = false; po.style.display = "none";
       startBGM(bgmMode);
+      if (pendingAdvance) { pendingAdvance = false; if (isBonus) nextBonusQuestion(); else nextQuestion(); }
+      else if (pendingLearn) { pendingLearn = false; showLearn(); }
     }
   }
   function show(id) {
@@ -1080,6 +1084,8 @@
     lives = PLAYER_LIVES;
     mistakes = 0;
     answeredInStage = 0;
+    pendingAdvance = false;
+    pendingLearn = false;
     streak = 0;
     bossHp = isBoss ? BOSS_HP : 0;
     startBGM(isBoss ? "boss" : "normal");
@@ -1196,7 +1202,6 @@
     const stage = STAGES[stageIdx] || { key: "bonus" };
     const chosen = question.choices[idx];
     const isCorrect = chosen === question.correct;
-    answeredInStage++;
     const fb = document.getElementById("feedback");
     const enemy = document.getElementById("enemyEmoji");
     const pad = document.getElementById("choicePad");
@@ -1219,6 +1224,7 @@
       SFX.correct();
       streak++;
       totalCorrect++;
+      answeredInStage++;
       if (rec) rec.correct++;
       fb.textContent = streak >= 2 ? "れんぞく" + streak + "せいかい！" : "せいかい！";
       fb.className = "feedback show good";
@@ -1231,6 +1237,7 @@
         return () => {
           if (done) return;
           done = true;
+          if (paused) { pendingAdvance = true; return; }
           sUnlock();
           if (isBonus) { nextBonusQuestion(); }
           else { nextQuestion(); }
@@ -1242,12 +1249,14 @@
         if (enemy) { enemy.classList.add("hurt"); setTimeout(() => enemy.classList.remove("hurt"), 500); }
         updateBossBar();
         setTimeout(() => {
+          if (paused) { pendingAdvance = true; return; }
           if (bossHp <= 0) { finishStage(); return; }
           speakFact(question.a, question.b, goNext);
           setTimeout(goNext, 3000);
         }, 750);
       } else {
         setTimeout(() => {
+          if (paused) { pendingAdvance = true; return; }
           speakFact(question.a, question.b, goNext);
           setTimeout(goNext, 3000);
         }, 650);
@@ -1268,6 +1277,7 @@
       speakFact(question.a, question.b);
       // おにぎり学習へ
       setTimeout(() => {
+        if (paused) { pendingLearn = true; return; }
         showLearn();
       }, 900);
     }
@@ -1357,6 +1367,7 @@
   }
   function showGameOver() {
     stopSpeak();
+    stopBGM();
     show("gameoverScreen");
     const s = screens.gameoverScreen;
     s.innerHTML = `
@@ -1377,6 +1388,7 @@
   // ============ ステージ終了 ============
   function finishStage() {
     stopSpeak();
+    stopBGM();
     const p = ensurePlayer(currentPlayer);
     const stage = STAGES[stageIdx];
     const m = MASTERS[dan];
@@ -1720,7 +1732,10 @@
   }
 
   // ============ 初期化 ============
+  let inited = false;
   function init() {
+    if (inited) return;
+    inited = true;
     setup();
     renderTitle();
   }
@@ -1729,6 +1744,18 @@
 
   // ============ BGM 開始（ユーザー操作後に） ============
   document.addEventListener("pointerdown", () => { initAudio(); startBGM(); }, { once: true });
+
+  // ============ キーボード回答ショートカット（1/2/3） ============
+  window.addEventListener("keydown", e => {
+    if (e.key !== "1" && e.key !== "2" && e.key !== "3") return;
+    if (paused || !question) return;
+    if (!screens.playScreen.classList.contains("active")) return;
+    const pad = document.getElementById("choicePad");
+    if (!pad || pad.classList.contains("disabled")) return;
+    const idx = parseInt(e.key, 10) - 1;
+    const btn = pad.querySelector('[data-idx="' + idx + '"]');
+    if (btn) { e.preventDefault(); answer(idx, btn); }
+  });
 })();
 </script>
 </body>
