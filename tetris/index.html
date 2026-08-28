@@ -159,7 +159,7 @@
 
   // ========= 論理解像度 =========
   let W = 0, H = 0, DPR = 1;
-  const COLS = 10, ROWS = 20, HIDDEN = 2; // 上部2行はかくれ行（スポーン用）
+  const COLS = 10, ROWS = 20, HIDDEN = 0; // スポーンは最上行（かくれ行なし）
   const TOTAL_ROWS = ROWS + HIDDEN;
   let cell = 0; // 1マスのピクセルサイズ
   let BOARD_OY = 0; // 盤面描画の縦オフセット（上部HUD帯分）
@@ -171,14 +171,16 @@
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     const availW = window.innerWidth, availH = window.innerHeight;
-    // 盤面幅 = COLS*cell、盤面高 = TOTAL_ROWS*cell、上部にHUD帯を確保
-    const hudRows = 2.6; // HUD帯の高さ（cell単位）
-    const targetRatio = COLS / (TOTAL_ROWS + hudRows);
-    let cw = availW * 0.94;
-    let ch = cw / targetRatio;
-    if (ch > availH * 0.96) { ch = availH * 0.96; cw = ch * targetRatio; }
-    W = Math.round(cw); H = Math.round(ch);
-    cell = Math.floor(W / COLS);
+    // スマホ縦持ちでは「高さ」が律速になるので、縦を優先して盤面を最大サイズにする
+    const hudRows = 1.8; // 上部HUD帯の高さ（cell単位）
+    const units = TOTAL_ROWS + hudRows;
+    let ch = availH * 0.99;
+    let cw = ch * (COLS / units);
+    if (cw > availW * 0.99) { // 極端に横長の画面なら横で律速
+      cw = availW * 0.99;
+      ch = cw * (units / COLS);
+    }
+    cell = Math.floor(cw / COLS);
     W = cell * COLS;
     BOARD_OY = Math.round(cell * hudRows);
     H = BOARD_OY + cell * TOTAL_ROWS;
@@ -575,14 +577,17 @@
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
+    // 盤面の背景（コンテナ感を持たせる）
+    ctx.fillStyle = "rgba(8,12,38,0.65)";
+    ctx.fillRect(0, BOARD_OY, W, H - BOARD_OY);
     // 背景グリッド（盤面部分のみ）
-    ctx.strokeStyle = "rgba(80,140,255,0.08)";
+    ctx.strokeStyle = "rgba(80,140,255,0.10)";
     ctx.lineWidth = 1;
     for (let c = 0; c <= COLS; c++) { ctx.beginPath(); ctx.moveTo(c*cell, BOARD_OY); ctx.lineTo(c*cell, H); ctx.stroke(); }
     for (let r = 0; r <= TOTAL_ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, BOARD_OY + r*cell); ctx.lineTo(W, BOARD_OY + r*cell); ctx.stroke(); }
 
     // ゲーム開始前は背景グリッドのみ
-    if (!board) return;
+    if (!board) { drawFrame(); return; }
 
     // 盤面（かくれ行を上にオフセットして描画: y - HIDDEN）
     for (let r = 0; r < TOTAL_ROWS; r++) {
@@ -625,6 +630,9 @@
     }
     ctx.globalAlpha = 1;
 
+    // 盤面の枠（壁・床）を描く
+    drawFrame();
+
     // HUD（上部帯）
     drawHUD();
 
@@ -639,29 +647,38 @@
     }
   }
 
+  function drawFrame() {
+    // 盤面の壁・床を示す枠
+    ctx.strokeStyle = "rgba(130,175,255,0.7)";
+    ctx.lineWidth = Math.max(2, Math.round(cell * 0.10));
+    ctx.strokeRect(ctx.lineWidth/2, BOARD_OY + ctx.lineWidth/2, W - ctx.lineWidth, H - BOARD_OY - ctx.lineWidth);
+  }
+
   function drawHUD() {
     // 上部HUD帯
-    ctx.fillStyle = "rgba(10,14,39,0.85)";
+    ctx.fillStyle = "rgba(10,14,39,0.92)";
     ctx.fillRect(0, 0, W, BOARD_OY);
+    // 1行目: スコア / レベル / ライン
     ctx.fillStyle = "#eaf0ff";
     ctx.textAlign = "left";
-    ctx.font = "bold " + Math.round(cell * 0.85) + "px sans-serif";
-    ctx.fillText("SCORE " + score, cell * 0.4, BOARD_OY * 0.42);
+    ctx.font = "bold " + Math.round(cell * 0.8) + "px sans-serif";
+    ctx.fillText("SCORE " + score, cell * 0.3, BOARD_OY * 0.40);
     ctx.textAlign = "right";
-    ctx.fillText("LV " + (level+1) + "  LN " + lines, W - cell*0.4, BOARD_OY * 0.42);
-    // 次ピース
+    ctx.fillText("LV " + (level+1) + "  LN " + lines, W - cell * 0.3, BOARD_OY * 0.40);
+    // 2行目: NEXT(3) と HOLD
+    const py = BOARD_OY * 0.56;
+    const scale = 0.40;
     ctx.textAlign = "left";
     ctx.fillStyle = "#9fb3ff";
-    ctx.font = "bold " + Math.round(cell * 0.6) + "px sans-serif";
-    ctx.fillText("NEXT", cell * 0.4, BOARD_OY * 0.78);
-    drawMini(nextQueue[0], cell * 0.4, BOARD_OY * 0.9, 0.62);
-    drawMini(nextQueue[1], cell * 0.4 + cell*2.6, BOARD_OY * 0.9, 0.5);
-    drawMini(nextQueue[2], cell * 0.4 + cell*4.7, BOARD_OY * 0.9, 0.42);
-    // ホールド
+    ctx.font = "bold " + Math.round(cell * 0.5) + "px sans-serif";
+    ctx.fillText("NEXT", cell * 0.3, BOARD_OY * 0.34);
+    drawMini(nextQueue[0], cell * 0.3, py, scale);
+    drawMini(nextQueue[1], cell * 0.3 + cell * 2.2, py, scale * 0.85);
+    drawMini(nextQueue[2], cell * 0.3 + cell * 4.0, py, scale * 0.72);
     ctx.textAlign = "right";
     ctx.fillStyle = "#9fb3ff";
-    ctx.fillText("HOLD", W - cell*0.4, BOARD_OY * 0.78);
-    if (holdType) drawMini(holdType, W - cell*2.4, BOARD_OY * 0.9, 0.62);
+    ctx.fillText("HOLD", W - cell * 0.3, BOARD_OY * 0.34);
+    if (holdType) drawMini(holdType, W - cell * 2.2, py, scale);
   }
 
   function drawMini(type, px, py, scale) {
