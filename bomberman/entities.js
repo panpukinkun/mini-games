@@ -343,7 +343,6 @@
         if (world.bombs[i].placer === this) world.bombs[i].placer = null;
       }
 
-      world.addShake(C.SHAKE_TIME, C.SHAKE_POWER);
       world.burst(this.x, this.y, this.color, 24, 3.2);
       world.burst(this.x, this.y, '#ffd76a', 10, 2.2);
       world.events.push('hurt');
@@ -414,8 +413,6 @@
       this.score = 0;
       this.score = 0;
       this.outcome = null;
-      this.shakeTime = 0;
-      this.shakeMag = 0;
       this.nextBombId = 1;
 
       for (var i = 0; i < C.SPAWNS.length; i++) {
@@ -498,7 +495,6 @@
         }
       }
 
-      this.addShake(C.SHAKE_TIME, C.SHAKE_POWER);
       this.burst(bomb.cx + 0.5, bomb.cy + 0.5, '#ff9a3d', 18, 3.2);
       this.burst(bomb.cx + 0.5, bomb.cy + 0.5, '#ffe27a', 8, 2.2);
       this.events.push('explode');
@@ -619,11 +615,6 @@
       return !this.explosions.has(BM.key(spawn.x, spawn.y));
     }
 
-    addShake(time, power) {
-      this.shakeTime = Math.max(this.shakeTime, time);
-      this.shakeMag = Math.max(this.shakeMag, power);
-    }
-
     burst(x, y, color, count, power) {
       for (var i = 0; i < count; i++) {
         var angle = Math.random() * Math.PI * 2;
@@ -710,9 +701,6 @@
       this.updatePendingItems(dt);
       this.pickupItems();
       this.updateParticles(dt);
-
-      this.shakeTime = Math.max(0, this.shakeTime - dt);
-      if (this.shakeTime <= 0) this.shakeMag = 0;
 
       this.checkOutcome();
     }

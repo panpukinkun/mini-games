@@ -35,9 +35,6 @@
     CORNER_ASSIST: 0.5,
     DELTA_MAX: 0.05,
 
-    SHAKE_TIME: 0.35,
-    SHAKE_POWER: 0.35,
-
     SPAWNS: [
       { x: 1, y: 9 },
       { x: 11, y: 1 },

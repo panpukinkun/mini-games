@@ -130,7 +130,6 @@
 
   Game.prototype.start = function () {
     this.audio.unlock();
-    this.audio.play('start');
     this.round = 1;
     this.roundWins = { player: 0, cpu: 0 };
     this.matchScore = 0;
@@ -145,6 +144,8 @@
     this._resultShown = false;
     this._lastTick = Math.ceil(this.world.timeLeft);
     this.input.clear();
+    this.ui.clearPadVisual();
+    if (this.ui._clearDpad) this.ui._clearDpad();
     this.input.attach();
     this.ui.hideOverlay();
     this.ui.updateHUD(this.world);
@@ -156,6 +157,8 @@
     if (this.state === 'playing') {
       this.state = 'paused';
       this.input.clear();
+      this.ui.clearPadVisual();
+      if (this.ui._clearDpad) this.ui._clearDpad();
       this.audio.play('click');
       this.ui.showOverlay({
         title: '⏸ 一時停止',
@@ -174,6 +177,8 @@
     if (this.state !== 'paused') return;
     this.state = 'playing';
     this.input.clear();
+    this.ui.clearPadVisual();
+    if (this.ui._clearDpad) this.ui._clearDpad();
     this.audio.play('click');
     this.ui.hideOverlay();
   };
@@ -254,7 +259,9 @@
     this.input.clear();
     this.input.detach();
     this.ui.clearPadVisual();
-    this.matchScore += this.world.score || 0;
+    var roundScore = this.world.score || 0;
+    this.matchScore += roundScore;
+    this.world.score = 0;
 
     if (outcome === 'win') this.roundWins.player++;
     else if (outcome === 'lose') this.roundWins.cpu++;
@@ -269,11 +276,7 @@
     var title = outcome === 'win' ? 'ROUND ' + this.round + ' CLEAR!' : outcome === 'lose' ? 'ROUND ' + this.round + ' LOST' : 'ROUND ' + this.round + ' DRAW';
     var body =
       '難易度 <b>' + diffLabel + '</b> / タイム <b>' + timeText + '</b> / のこりライフ <b>' + human.lives + '</b><br>' +
-      'ラウンドスコア <b>' + (this.world.score || 0) + '</b> / ラウンド成績 <b>' + this.roundWins.player + ' - ' + this.roundWins.cpu + '</b>';
-
-    if (outcome === 'win') this.audio.play('win');
-    else if (outcome === 'lose') this.audio.play('lose');
-    else this.audio.play('tick');
+      'ラウンドスコア <b>' + roundScore + '</b> / ラウンド成績 <b>' + this.roundWins.player + ' - ' + this.roundWins.cpu + '</b>';
 
     this.ui.updateHUD(this.world);
 
@@ -281,6 +284,10 @@
       this.showFinalResult();
       return;
     }
+
+    if (outcome === 'win') this.audio.play('win');
+    else if (outcome === 'lose') this.audio.play('lose');
+    else this.audio.play('tick');
 
     var self = this;
     this.ui.showOverlay({
@@ -453,14 +460,7 @@
     ctx.fillStyle = this._bgGradient;
     ctx.fillRect(0, 0, w, h);
 
-    var shake = 0;
-    if (this.state === 'playing' && this.world.shakeTime > 0) {
-      shake = this.world.shakeMag * b.tile * 0.28;
-    }
     ctx.save();
-    if (shake) {
-      ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
-    }
 
     this._ensureSprites();
     this._drawBoard(ctx, b);
