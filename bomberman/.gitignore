@@ -1,0 +1,11 @@
+# ローカル専用（公開リポジトリに含めない）
+# 会話全文・内部reasoning・絶対パスを含むため、GitHub Pages には公開しない。
+docs/session/transcript.md
+docs/session/raw.jsonl
+
+# ローカルのOpenCode DBを読む再生成用ツール（開発環境依存）
+tools/export_session.py
+
+# Pythonの生成物
+__pycache__/
+*.pyc
