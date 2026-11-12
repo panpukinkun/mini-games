@@ -60,6 +60,8 @@
       this.moveProgress = 0;
       this.moveDir = null;
       this.desiredDir = null;
+      this.turnDir = null;
+      this.turnTime = 0;
       this.moving = false;
       this.justArrived = false;
       this.blocked = false;
@@ -207,10 +209,33 @@
         else dx = 0;
       }
 
+      if (this.turnTime > 0) this.turnTime = Math.max(0, this.turnTime - dt);
+
       if (dx || dy) {
         this.lastAxis = dx ? 'x' : 'y';
         this.dir = { x: dx, y: dy };
         this.desiredDir = { x: dx, y: dy };
+
+        if (this.moving) {
+          this.turnDir = { x: dx, y: dy };
+          this.turnTime = 0.35;
+
+          // instant reverse (keeps the player on the grid line)
+          if (this.moveDir &&
+              dx === -this.moveDir.x && dy === -this.moveDir.y &&
+              this.canEnter(world, this.fromX, this.fromY)) {
+            var fx = this.fromX;
+            var fy = this.fromY;
+            this.fromX = this.toX;
+            this.fromY = this.toY;
+            this.toX = fx;
+            this.toY = fy;
+            this.moveProgress = 1 - this.moveProgress;
+            this.moveDir = { x: dx, y: dy };
+            this.turnDir = null;
+            this.turnTime = 0;
+          }
+        }
       } else {
         this.desiredDir = null;
       }
@@ -226,7 +251,14 @@
           this.moving = false;
           this.moveDir = null;
           this.justArrived = true;
-          if (this.desiredDir) this.tryStart(world);
+          var next = this.desiredDir;
+          if (!next && this.turnTime > 0 && this.turnDir) next = this.turnDir;
+          this.turnDir = null;
+          this.turnTime = 0;
+          if (next) {
+            this.desiredDir = next;
+            this.tryStart(world);
+          }
         } else {
           var p = this.moveProgress;
           this.x = (this.fromX + 0.5) + (this.toX - this.fromX) * p;
@@ -318,6 +350,8 @@
       this.moveProgress = 0;
       this.moveDir = null;
       this.desiredDir = null;
+      this.turnDir = null;
+      this.turnTime = 0;
       this.justArrived = false;
       this.blocked = false;
       this.alive = true;

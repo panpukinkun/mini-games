@@ -11,7 +11,8 @@
 [x] Phase 6a: 自動検証（node --check / verify_all / dom_smoke / sim / playtest / longrun）
 [x] Phase 6b: Chromium（PC/モバイル/横向き/320px/難易度/file://）
 [x] Phase 6c: クラシック化（グリッド移動・タップバッファ・古典HUD・READY/GO・3本勝負・スコア・スプライト・十字火炎）
-[ ] Phase 6d: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開済み・確認待ち
+[ ] Phase 6d: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開後
+[x] Phase 6e: D-pad単一サーフェス化・スライド・デッドゾーン・ターンバッファ・即時反転
 [x] Phase 7: クラシック版を本番反映・Pagesビルド・本番URL確認 — 完了（b2b9640）
 
 ## 手動確認チェックリスト

@@ -25,6 +25,7 @@
       ovPrimary: $('ovPrimary'),
       ovSecondary: $('ovSecondary'),
       pad: $('pad'),
+      dpad: $('dpad'),
       bomb: $('btnBomb'),
       toast: $('toast'),
       diff: $('ovDiff'),
@@ -80,10 +81,7 @@
       })(this.el.diffButtons[d]);
     }
 
-    var dirs = ['up', 'left', 'down', 'right'];
-    for (var i = 0; i < dirs.length; i++) {
-      this._bindDir(this.el.pad.querySelector('[data-dir="' + dirs[i] + '"]'), dirs[i]);
-    }
+    this._bindDpad();
 
     var bomb = this.el.bomb;
     var pressBomb = function (e) {
@@ -107,32 +105,86 @@
 
     window.addEventListener('blur', function () {
       self.clearPadVisual();
+      if (self._clearDpad) self._clearDpad();
     });
   };
 
-  UI.prototype._bindDir = function (btn, dir) {
-    if (!btn) return;
+  UI.prototype._bindDpad = function () {
     var self = this;
     var game = this.game;
-    var press = function (e) {
+    var dpad = this.el.dpad;
+    if (!dpad) return;
+
+    var dirs = ['up', 'left', 'down', 'right'];
+    var active = null;
+    var pointerId = null;
+    var padRect = null;
+
+    var buttons = {};
+    for (var i = 0; i < dirs.length; i++) {
+      buttons[dirs[i]] = dpad.querySelector('[data-dir="' + dirs[i] + '"]');
+    }
+
+    function setVisual(dir) {
+      for (var j = 0; j < dirs.length; j++) {
+        var btn = buttons[dirs[j]];
+        if (btn) btn.classList.toggle('on', dirs[j] === dir);
+      }
+    }
+
+    function setDir(dir) {
+      if (dir === active) return;
+      for (var j = 0; j < dirs.length; j++) game.input.setPad(dirs[j], false);
+      active = dir;
+      if (dir) game.input.setPad(dir, true);
+      setVisual(dir);
+    }
+
+    function clear() {
+      setDir(null);
+    }
+
+    function updateFromEvent(e) {
+      if (!padRect) padRect = dpad.getBoundingClientRect();
+      var cx = padRect.left + padRect.width / 2;
+      var cy = padRect.top + padRect.height / 2;
+      var dx = e.clientX - cx;
+      var dy = e.clientY - cy;
+      var dead = Math.min(padRect.width, padRect.height) * 0.16;
+      if (dx * dx + dy * dy < dead * dead) {
+        setDir(null);
+        return;
+      }
+      setDir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+    }
+
+    function release(e) {
+      if (pointerId !== null && e.pointerId !== undefined && e.pointerId !== pointerId) return;
+      pointerId = null;
+      padRect = null;
+      clear();
+    }
+
+    dpad.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
       game.audio.unlock();
-      self.game.input.setPad(dir, true);
-      btn.classList.add('on');
-      try { btn.setPointerCapture(e.pointerId); } catch (err) {}
-    };
-    var release = function () {
-      self.game.input.setPad(dir, false);
-      btn.classList.remove('on');
-    };
-    btn.addEventListener('pointerdown', function (e) {
-      if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
-      press(e);
+      pointerId = e.pointerId;
+      padRect = dpad.getBoundingClientRect();
+      try { dpad.setPointerCapture(e.pointerId); } catch (err) {}
+      updateFromEvent(e);
     });
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointercancel', release);
-    btn.addEventListener('lostpointercapture', release);
-    btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    dpad.addEventListener('pointermove', function (e) {
+      if (pointerId === null || e.pointerId !== pointerId) return;
+      e.preventDefault();
+      updateFromEvent(e);
+    });
+    dpad.addEventListener('pointerup', release);
+    dpad.addEventListener('pointercancel', release);
+    dpad.addEventListener('lostpointercapture', release);
+    dpad.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    this._clearDpad = clear;
   };
 
   UI.prototype.clearPadVisual = function () {

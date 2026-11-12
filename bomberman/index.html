@@ -122,13 +122,28 @@
     z-index: 6;
   }
   .dpad {
-    display: grid;
-    grid-template-columns: repeat(3, 52px);
-    grid-template-rows: repeat(2, 52px);
-    gap: 6px;
+    position: relative;
+    width: 144px;
+    height: 144px;
+    flex: 0 0 auto;
     touch-action: none;
   }
+  .dpad::after {
+    content: '';
+    position: absolute;
+    left: 56px;
+    top: 56px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 154, 61, 0.12);
+    border: 1px solid rgba(255, 176, 92, 0.28);
+    pointer-events: none;
+  }
   .pad-btn {
+    position: absolute;
+    width: 48px;
+    height: 48px;
     min-width: 48px;
     min-height: 48px;
     border: 2px solid rgba(255, 176, 92, 0.4);
@@ -141,18 +156,19 @@
     align-items: center;
     justify-content: center;
     touch-action: none;
+    pointer-events: none;
     -webkit-tap-highlight-color: transparent;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   }
-  .pad-btn:active, .pad-btn.on {
-    background: rgba(255, 154, 61, 0.55);
+  .pad-btn.on {
+    background: rgba(255, 154, 61, 0.62);
     border-color: var(--orange2);
     transform: scale(0.96);
   }
-  #padUp { grid-column: 2; grid-row: 1; }
-  #padLeft { grid-column: 1; grid-row: 2; }
-  #padDown { grid-column: 2; grid-row: 2; }
-  #padRight { grid-column: 3; grid-row: 2; }
+  #padUp { left: 48px; top: 0; }
+  #padLeft { left: 0; top: 48px; }
+  #padRight { left: 96px; top: 48px; }
+  #padDown { left: 48px; top: 96px; }
   #btnBomb {
     width: 82px;
     height: 82px;
@@ -310,8 +326,7 @@
     .chip { min-height: 22px; padding: 1px 6px; }
     .hud-btn { width: 28px; height: 28px; }
     #pad { padding: 4px 12px calc(6px + env(safe-area-inset-bottom, 0px)); }
-    .dpad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); gap: 5px; }
-    .pad-btn { min-width: 44px; min-height: 44px; font-size: 18px; }
+    .pad-btn { font-size: 18px; }
     #btnBomb { width: 66px; height: 66px; font-size: 28px; }
   }
 </style>
@@ -341,7 +356,7 @@
   </main>
 
   <div id="pad">
-    <div class="dpad" aria-label="方向キー">
+    <div class="dpad" id="dpad" aria-label="方向キー">
       <button class="pad-btn" id="padUp" type="button" data-dir="up" aria-label="上">▲</button>
       <button class="pad-btn" id="padLeft" type="button" data-dir="left" aria-label="左">◀</button>
       <button class="pad-btn" id="padDown" type="button" data-dir="down" aria-label="下">▼</button>
