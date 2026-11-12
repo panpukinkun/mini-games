@@ -10,8 +10,8 @@
 [x] Phase 5.6: 最適化（背景/タイル/爆風/音/BFS） — 実装済み
 [x] Phase 6a: 自動検証（node --check / verify_all / dom_smoke / sim / playtest / longrun）— 合格
 [x] Phase 6b: Chromium実ブラウザ（PC/モバイル/横向き/320px/難易度/file://）— 合格
-[ ] Phase 6c: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開後
-[ ] Phase 7: 本番反映・Pagesビルド・本番URL確認 — 実行中
+[ ] Phase 6c: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開済み・確認待ち
+[x] Phase 7: 本番反映・Pagesビルド・本番URL確認 — 完了（324d339）
 
 ## 手動確認チェックリスト
 - [ ] PC: 矢印/WASD＋Space、P/Escポーズ、Mミュートで1試合完走
