@@ -14,7 +14,7 @@
 [ ] Phase 6d: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開後
 [x] Phase 6e: D-pad単一サーフェス化・スライド・デッドゾーン・ターンバッファ・即時反転
 [x] Phase 6f: タップ1マス/長押し連続の分離、タップ余韻の再消費防止（移動しすぎ修正）
-[x] Phase 7: クラシック版＋D-pad改善を本番反映・Pagesビルド・本番URL確認 — 完了（b0ce5e8）
+[x] Phase 7: クラシック版＋D-pad改善＋過剰移動修正を本番反映・Pagesビルド・本番URL確認 — 完了（c3ad3c7）
 
 ## 手動確認チェックリスト
 - [ ] PC: 矢印/WASD＋Space、P/Escポーズ、Mミュートで1試合完走
