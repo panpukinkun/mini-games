@@ -22,6 +22,10 @@
     this.board = { tile: 24, ox: 0, oy: 0, w: 0, h: 0 };
     this._lastTick = 0;
     this._resultShown = false;
+    this.round = 1;
+    this.roundWins = { player: 0, cpu: 0 };
+    this.matchScore = 0;
+    this.readyTimer = 0;
     this.stats = BM.Storage.get('bm_stats', { wins: 0, losses: 0, draws: 0, best: null });
     this.sprites = null;
     this._spriteTile = 0;
@@ -109,8 +113,8 @@
     this.ui.showOverlay({
       title: '🎃 ボムボムパンプキン',
       body:
-        '爆弾を置いて、かべをこわして、アイテムをとろう。<br>' +
-        '爆風に当たるとライフが1つ減るよ。CPUを3体とも倒せば勝ち！<br><br>' +
+        '3本勝負！ 爆弾でかべをこわし、アイテムをとって、CPU3体を倒そう。<br>' +
+        '2ラウンド先取で勝ち。爆風に当たるとライフが減るよ。<br><br>' +
         '<b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
         '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' +
         record,
@@ -127,18 +131,28 @@
   Game.prototype.start = function () {
     this.audio.unlock();
     this.audio.play('start');
+    this.round = 1;
+    this.roundWins = { player: 0, cpu: 0 };
+    this.matchScore = 0;
+    this.startRound();
+  };
+
+  Game.prototype.startRound = function () {
+    this.audio.unlock();
     this.world = new BM.World(this.difficulty);
-    this.state = 'playing';
+    this.state = 'ready';
+    this.readyTimer = 1.8;
     this._resultShown = false;
     this._lastTick = Math.ceil(this.world.timeLeft);
     this.input.clear();
     this.input.attach();
     this.ui.hideOverlay();
     this.ui.updateHUD(this.world);
-    this.ui.toast('難易度: ' + BM.DIFFICULTY[this.difficulty].label + ' でスタート！');
+    this.ui.toast('ROUND ' + this.round + ' — ' + BM.DIFFICULTY[this.difficulty].label);
   };
 
   Game.prototype.togglePause = function () {
+    if (this.state !== 'playing' && this.state !== 'paused') return;
     if (this.state === 'playing') {
       this.state = 'paused';
       this.input.clear();
@@ -175,13 +189,24 @@
   };
 
   Game.prototype.step = function (dt) {
+    if (this.state === 'ready') {
+      this.readyTimer -= dt;
+      if (this.readyTimer <= 0) {
+        this.state = 'playing';
+        this.audio.play('start');
+      }
+      this.ui.updateHUD(this.world);
+      this.render();
+      return;
+    }
+
     if (this.state === 'playing') {
       this.world.update(dt, this.input);
       this._drainEvents();
 
       if (!this._resultShown && this.world.outcome) {
         this._resultShown = true;
-        this.finish(this.world.outcome);
+        this.endRound(this.world.outcome);
       }
 
       if (this.world.timeLeft <= 10) {
@@ -224,37 +249,77 @@
     events.length = 0;
   };
 
-  Game.prototype.finish = function (outcome) {
-    this.state = 'result';
-    this.input.detach();
+  Game.prototype.endRound = function (outcome) {
+    this.state = 'roundOver';
     this.input.clear();
+    this.input.detach();
     this.ui.clearPadVisual();
+    this.matchScore += this.world.score || 0;
 
+    if (outcome === 'win') this.roundWins.player++;
+    else if (outcome === 'lose') this.roundWins.cpu++;
+
+    var final = this.roundWins.player >= 2 || this.roundWins.cpu >= 2 || this.round >= 3;
     var human = this.world.players[0];
     var used = Math.max(0, Math.round(this.world.elapsed));
     var mm = Math.floor(used / 60);
     var ss = used % 60;
     var timeText = mm + ':' + (ss < 10 ? '0' + ss : ss);
-    var title = '';
-    var body = '';
     var diffLabel = BM.DIFFICULTY[this.difficulty].label;
+    var title = outcome === 'win' ? 'ROUND ' + this.round + ' CLEAR!' : outcome === 'lose' ? 'ROUND ' + this.round + ' LOST' : 'ROUND ' + this.round + ' DRAW';
+    var body =
+      '難易度 <b>' + diffLabel + '</b> / タイム <b>' + timeText + '</b> / のこりライフ <b>' + human.lives + '</b><br>' +
+      'ラウンドスコア <b>' + (this.world.score || 0) + '</b> / ラウンド成績 <b>' + this.roundWins.player + ' - ' + this.roundWins.cpu + '</b>';
+
+    if (outcome === 'win') this.audio.play('win');
+    else if (outcome === 'lose') this.audio.play('lose');
+    else this.audio.play('tick');
+
+    this.ui.updateHUD(this.world);
+
+    if (final) {
+      this.showFinalResult();
+      return;
+    }
+
+    var self = this;
+    this.ui.showOverlay({
+      title: title,
+      body: body,
+      primary: 'つぎのラウンド',
+      onPrimary: function () {
+        self.round++;
+        self.startRound();
+      },
+      secondary: 'トップへ',
+      onSecondary: this.goHome.bind(this)
+    });
+  };
+
+  Game.prototype.showFinalResult = function () {
+    this.state = 'result';
+    this.input.detach();
+    var p = this.roundWins.player;
+    var c = this.roundWins.cpu;
+    var outcome = p > c ? 'win' : p < c ? 'lose' : 'draw';
+    var title;
+    var body;
 
     if (outcome === 'win') {
       this.stats.wins = (this.stats.wins || 0) + 1;
-      if (!this.stats.best || used < this.stats.best) this.stats.best = used;
       this.audio.play('win');
-      title = '🎉 やったね！';
-      body = '難易度 <b>' + diffLabel + '</b> / CPUをぜんぶ倒したよ！<br>タイム <b>' + timeText + '</b> / のこりライフ <b>' + human.lives + '</b>';
+      title = '🏆 YOU WIN!';
+      body = '3本勝負 <b>' + p + ' - ' + c + '</b> で勝利！<br>合計スコア <b>' + this.matchScore + '</b>';
     } else if (outcome === 'lose') {
       this.stats.losses = (this.stats.losses || 0) + 1;
       this.audio.play('lose');
-      title = '💥 ざんねん…';
-      body = '難易度 <b>' + diffLabel + '</b> / ライフがなくなったよ。<br>もういちど挑戦してみよう！';
+      title = '💥 YOU LOSE';
+      body = '3本勝負 <b>' + p + ' - ' + c + '</b> で敗北…<br>合計スコア <b>' + this.matchScore + '</b>';
     } else {
       this.stats.draws = (this.stats.draws || 0) + 1;
       this.audio.play('lose');
-      title = '⏱ ひきわけ';
-      body = '難易度 <b>' + diffLabel + '</b> / 時間切れ！<br>のこりCPU <b>' + this.world.aliveCPUs() + '</b> 体 / のこりライフ <b>' + human.lives + '</b>';
+      title = '⏱ DRAW';
+      body = '3本勝負 <b>' + p + ' - ' + c + '</b> の引き分け。<br>合計スコア <b>' + this.matchScore + '</b>';
     }
 
     BM.Storage.set('bm_stats', this.stats);
@@ -289,16 +354,16 @@
     }
 
     var floorA = make(function (c) {
-      c.fillStyle = '#19112c';
+      c.fillStyle = '#1c4a3b';
       c.fillRect(0, 0, t, t);
-      c.strokeStyle = 'rgba(255,255,255,0.035)';
+      c.strokeStyle = 'rgba(180,255,220,0.06)';
       c.lineWidth = 1;
       c.strokeRect(0.5, 0.5, t - 1, t - 1);
     });
     var floorB = make(function (c) {
-      c.fillStyle = '#1d1533';
+      c.fillStyle = '#225647';
       c.fillRect(0, 0, t, t);
-      c.strokeStyle = 'rgba(255,255,255,0.035)';
+      c.strokeStyle = 'rgba(180,255,220,0.06)';
       c.lineWidth = 1;
       c.strokeRect(0.5, 0.5, t - 1, t - 1);
     });
@@ -328,13 +393,28 @@
     explosion.width = 128;
     explosion.height = 128;
     var ec = explosion.getContext('2d');
-    var g = ec.createRadialGradient(64, 64, 0, 64, 64, 64);
-    g.addColorStop(0, 'rgba(255,255,220,1)');
-    g.addColorStop(0.35, 'rgba(255,220,90,0.95)');
-    g.addColorStop(0.7, 'rgba(255,120,40,0.72)');
-    g.addColorStop(1, 'rgba(255,60,20,0)');
-    ec.fillStyle = g;
-    ec.fillRect(0, 0, 128, 128);
+    ec.fillStyle = 'rgba(255, 118, 28, 0.95)';
+    ec.beginPath();
+    ec.ellipse(64, 34, 19, 34, 0, 0, Math.PI * 2);
+    ec.ellipse(64, 94, 19, 34, 0, 0, Math.PI * 2);
+    ec.ellipse(34, 64, 34, 19, 0, 0, Math.PI * 2);
+    ec.ellipse(94, 64, 34, 19, 0, 0, Math.PI * 2);
+    ec.fill();
+    ec.fillStyle = 'rgba(255, 196, 54, 0.98)';
+    ec.beginPath();
+    ec.ellipse(64, 44, 12, 22, 0, 0, Math.PI * 2);
+    ec.ellipse(64, 84, 12, 22, 0, 0, Math.PI * 2);
+    ec.ellipse(44, 64, 22, 12, 0, 0, Math.PI * 2);
+    ec.ellipse(84, 64, 22, 12, 0, 0, Math.PI * 2);
+    ec.fill();
+    var core = ec.createRadialGradient(64, 64, 0, 64, 64, 34);
+    core.addColorStop(0, 'rgba(255,255,235,1)');
+    core.addColorStop(0.45, 'rgba(255,240,150,0.98)');
+    core.addColorStop(1, 'rgba(255,150,40,0)');
+    ec.fillStyle = core;
+    ec.beginPath();
+    ec.arc(64, 64, 34, 0, Math.PI * 2);
+    ec.fill();
 
     this.sprites = {
       floorA: floorA,
@@ -389,12 +469,33 @@
     this._drawExplosions(ctx, b);
     this._drawPlayers(ctx, b);
     this._drawParticles(ctx, b);
+    if (this.state === 'ready') this._drawReady(ctx, b);
 
     ctx.restore();
 
     if (this.state === 'title') {
       ctx.fillStyle = 'rgba(8,5,16,0.18)';
       ctx.fillRect(0, 0, w, h);
+    }
+
+    if (this.state === 'ready') {
+      var msg = this.readyTimer > 0.55 ? 'READY' : 'GO!';
+      var cx = b.ox + b.w / 2;
+      var cy = b.oy + b.h / 2;
+      var fs = Math.max(22, b.tile * 1.25);
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 5, 16, 0.62)';
+      this._roundRect(ctx, cx - b.tile * 2.5, cy - fs * 0.9, b.tile * 5, fs * 1.8, b.tile * 0.3);
+      ctx.fill();
+      ctx.font = '900 ' + fs + 'px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(3, fs * 0.12);
+      ctx.strokeStyle = 'rgba(40, 14, 4, 0.9)';
+      ctx.strokeText(msg, cx, cy);
+      ctx.fillStyle = msg === 'GO!' ? '#fff4b0' : '#ffd76a';
+      ctx.fillText(msg, cx, cy);
+      ctx.restore();
     }
   };
 
@@ -566,57 +667,136 @@
 
       var cx = b.ox + p.x * t;
       var cy = b.oy + p.y * t;
-      var r = t * 0.34;
+      var r = t * 0.36;
+      var walk = p.moving ? Math.sin(p.anim * 18) * r * 0.16 : 0;
 
       ctx.save();
+
+      // shadow
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
-      ctx.ellipse(cx, cy + r * 0.72, r * 0.95, r * 0.32, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + r * 0.9, r * 0.95, r * 0.28, 0, 0, Math.PI * 2);
       ctx.fill();
 
       if (!p.isCPU) {
         ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth = Math.max(1.5, t * 0.06);
+        ctx.lineWidth = Math.max(1.5, t * 0.055);
         ctx.beginPath();
-        ctx.arc(cx, cy, r * 1.18, 0, Math.PI * 2);
+        ctx.arc(cx, cy + r * 0.18, r * 1.28, 0, Math.PI * 2);
         ctx.stroke();
       }
 
+      // feet / boots
+      ctx.fillStyle = p.color;
+      this._roundRect(ctx, cx - r * 0.48, cy + r * 0.55 + walk, r * 0.36, r * 0.3, r * 0.1);
+      ctx.fill();
+      this._roundRect(ctx, cx + r * 0.12, cy + r * 0.55 - walk, r * 0.36, r * 0.3, r * 0.1);
+      ctx.fill();
+
+      // body (white bomber suit + color trim)
+      ctx.fillStyle = '#f7f2ff';
+      this._roundRect(ctx, cx - r * 0.5, cy - r * 0.18, r * 1.0, r * 0.9, r * 0.3);
+      ctx.fill();
+      ctx.fillStyle = p.color;
+      this._roundRect(ctx, cx - r * 0.5, cy + r * 0.42, r * 1.0, r * 0.22, r * 0.08);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      this._roundRect(ctx, cx - r * 0.38, cy - r * 0.08, r * 0.18, r * 0.42, r * 0.08);
+      ctx.fill();
+
+      // hands
+      ctx.fillStyle = '#f7f2ff';
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.62, cy + r * 0.12, r * 0.18, 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.62, cy + r * 0.12, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // head
+      var hx = cx;
+      var hy = cy - r * 0.62;
+      var hr = r * 0.62;
+      ctx.fillStyle = '#ffd9b3';
+      ctx.beginPath();
+      ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+      ctx.fill();
+
+      // helmet dome
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.arc(hx, hy - hr * 0.08, hr * 1.02, Math.PI, Math.PI * 2);
+      ctx.lineTo(hx + hr * 1.02, hy + hr * 0.06);
+      ctx.lineTo(hx - hr * 1.02, hy + hr * 0.06);
+      ctx.closePath();
       ctx.fill();
-
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillStyle = 'rgba(255,255,255,0.32)';
       ctx.beginPath();
-      ctx.arc(cx - r * 0.3, cy - r * 0.34, r * 0.32, 0, Math.PI * 2);
+      ctx.arc(hx - hr * 0.35, hy - hr * 0.55, hr * 0.26, 0, Math.PI * 2);
       ctx.fill();
 
-      var ex = p.dir.x * r * 0.16;
-      var ey = p.dir.y * r * 0.16;
+      // helmet antenna / pumpkin stem
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = Math.max(1.5, t * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - hr * 1.02);
+      ctx.lineTo(hx, hy - hr * 1.32);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd76a';
+      ctx.beginPath();
+      ctx.arc(hx, hy - hr * 1.38, Math.max(1.5, t * 0.08), 0, Math.PI * 2);
+      ctx.fill();
+
+      // eyes (direction-aware)
+      var ex = p.dir.x * r * 0.12;
+      var ey = p.dir.y * r * 0.1;
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(cx - r * 0.28 + ex, cy - r * 0.08 + ey, Math.max(1.4, r * 0.18), 0, Math.PI * 2);
-      ctx.arc(cx + r * 0.28 + ex, cy - r * 0.08 + ey, Math.max(1.4, r * 0.18), 0, Math.PI * 2);
+      ctx.arc(hx - hr * 0.34 + ex, hy + hr * 0.08 + ey, Math.max(1.4, hr * 0.24), 0, Math.PI * 2);
+      ctx.arc(hx + hr * 0.34 + ex, hy + hr * 0.08 + ey, Math.max(1.4, hr * 0.24), 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#1a1020';
       ctx.beginPath();
-      ctx.arc(cx - r * 0.26 + ex, cy - r * 0.08 + ey, Math.max(0.8, r * 0.09), 0, Math.PI * 2);
-      ctx.arc(cx + r * 0.30 + ex, cy - r * 0.08 + ey, Math.max(0.8, r * 0.09), 0, Math.PI * 2);
+      ctx.arc(hx - hr * 0.32 + ex, hy + hr * 0.08 + ey, Math.max(0.8, hr * 0.12), 0, Math.PI * 2);
+      ctx.arc(hx + hr * 0.36 + ex, hy + hr * 0.08 + ey, Math.max(0.8, hr * 0.12), 0, Math.PI * 2);
       ctx.fill();
+
+      // mouth
+      ctx.strokeStyle = 'rgba(120,60,30,0.7)';
+      ctx.lineWidth = Math.max(1, t * 0.035);
+      ctx.beginPath();
+      ctx.arc(hx, hy + hr * 0.38, hr * 0.2, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
 
       if (!p.isCPU) {
         ctx.fillStyle = '#ffd76a';
         ctx.beginPath();
-        ctx.moveTo(cx - r * 0.34, cy - r * 1.5);
-        ctx.lineTo(cx - r * 0.1, cy - r * 1.16);
-        ctx.lineTo(cx - r * 0.58, cy - r * 1.16);
+        ctx.moveTo(cx - r * 0.34, cy - r * 1.55);
+        ctx.lineTo(cx - r * 0.08, cy - r * 1.22);
+        ctx.lineTo(cx - r * 0.6, cy - r * 1.22);
         ctx.closePath();
         ctx.fill();
       }
 
       ctx.restore();
     }
+  };
+
+  Game.prototype._drawReady = function (ctx, b) {
+    var msg = this.readyTimer > 0.55 ? 'READY' : 'GO!';
+    var x = b.ox + b.w / 2;
+    var y = b.oy + b.h / 2;
+    var t = b.tile;
+    ctx.save();
+    ctx.fillStyle = 'rgba(6, 4, 12, 0.55)';
+    ctx.fillRect(b.ox, y - t * 0.9, b.w, t * 1.8);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 ' + Math.max(22, t * 1.35) + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.lineWidth = Math.max(3, t * 0.13);
+    ctx.strokeStyle = '#2a1208';
+    ctx.strokeText(msg, x, y);
+    ctx.fillStyle = msg === 'GO!' ? '#8dff9e' : '#ffd76a';
+    ctx.fillText(msg, x, y);
+    ctx.restore();
   };
 
   Game.prototype._drawParticles = function (ctx, b) {

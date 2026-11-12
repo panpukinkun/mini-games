@@ -31,8 +31,6 @@
       this.lastY = player.y;
 
       if (this.panic > 0) this.panic -= dt;
-      if (this.escapeTimer > 0) this.escapeTimer -= dt;
-      else this.escapeDir = null;
 
       if (moved < 0.006 && (this.dir.x || this.dir.y)) {
         this.stuck += dt;
@@ -70,14 +68,8 @@
       var inDanger = this.inDangerAt(player.x, player.y, danger);
 
       if (inDanger) {
-        if (this.escapeTimer > 0 && this.escapeDir) {
-          return { dir: this.escapeDir, bomb: false };
-        }
-
         var centerStep = this.centerStep(player, danger);
         if (centerStep) {
-          this.escapeDir = centerStep;
-          this.escapeTimer = 0.2;
           return { dir: centerStep, bomb: false };
         }
 
@@ -86,22 +78,11 @@
           function (c) { return !danger[BM.key(c.x, c.y)]; },
           danger, 6
         );
-        if (escapeStep) {
-          this.escapeDir = escapeStep;
-          this.escapeTimer = 0.35;
-          return { dir: escapeStep, bomb: false };
-        }
+        if (escapeStep) return { dir: escapeStep, bomb: false };
 
         var anyStep = this.stepToward(cell, world, player, function () { return false; }, null, 4);
-        if (anyStep) {
-          this.escapeDir = anyStep;
-          this.escapeTimer = 0.2;
-        }
         return { dir: anyStep || { x: 0, y: 0 }, bomb: false };
       }
-
-      this.escapeDir = null;
-      this.escapeTimer = 0;
 
       var canEscape = this.escapeExists(player, world, cell);
       var softAdjacent = this.adjacentSoft(cell, world);

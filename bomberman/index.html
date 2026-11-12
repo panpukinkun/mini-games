@@ -47,36 +47,41 @@
   #hud {
     flex: 0 0 auto;
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    background: linear-gradient(180deg, rgba(20, 12, 34, 0.92), rgba(20, 12, 34, 0.55));
-    border-bottom: 1px solid var(--line);
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 10px;
+    background: linear-gradient(180deg, rgba(15, 9, 26, 0.96), rgba(20, 12, 34, 0.7));
+    border-bottom: 2px solid rgba(255, 176, 92, 0.32);
     z-index: 5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
-  #hudTitle {
-    font-weight: 800;
-    font-size: clamp(13px, 3.4vw, 18px);
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: auto;
+  #hudRow1, #hudRow2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
+  #hudButtons { margin-left: auto; display: flex; gap: 4px; }
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    min-height: 30px;
-    padding: 3px 9px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    font-size: clamp(11px, 2.9vw, 14px);
+    gap: 5px;
+    min-height: 28px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 176, 92, 0.16);
+    font-size: clamp(10px, 2.6vw, 13px);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .chip strong { color: var(--orange2); font-weight: 800; }
+  .chip .k {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    font-weight: 800;
+  }
+  .chip strong { color: var(--orange2); font-weight: 900; }
   .hud-btn {
     flex: 0 0 auto;
     width: 38px;
@@ -280,17 +285,17 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   @media (pointer: coarse), (max-width: 820px) {
     #pad { display: flex; }
-    #hudTitle { display: none; }
   }
   @media (max-width: 560px) {
-    #hud { gap: 5px; padding: 6px 6px; }
-    #hudPower { display: none; }
-    .chip { padding: 2px 7px; font-size: 11px; min-height: 26px; }
-    .hud-btn { width: 34px; height: 34px; border-radius: 10px; font-size: 15px; }
+    #hud { gap: 3px; padding: 4px 6px; }
+    #hudRow1, #hudRow2 { gap: 4px; }
+    .chip { padding: 2px 5px; font-size: 10px; min-height: 24px; }
+    .hud-btn { width: 30px; height: 30px; border-radius: 8px; font-size: 14px; }
   }
-  @media (max-width: 400px) {
-    .chip { padding: 2px 5px; font-size: 10px; }
-    .hud-btn { width: 31px; height: 31px; }
+  @media (max-width: 380px) {
+    .chip .k { display: none; }
+    .chip { padding: 2px 4px; font-size: 10px; }
+    .hud-btn { width: 28px; height: 28px; }
   }
   @media (orientation: landscape) and (max-height: 540px) {
     #overlay { padding: 10px 16px; }
@@ -301,9 +306,9 @@
     .diff-btn { min-height: 44px; padding: 0 12px; font-size: 12px; }
     .diff-hint { margin-bottom: 8px; font-size: 11px; }
     .ov-btn { min-height: 44px; padding: 0 20px; font-size: 16px; }
-    #hud { padding: 4px 8px; }
-    .chip { min-height: 26px; padding: 2px 7px; }
-    .hud-btn { width: 32px; height: 32px; }
+    #hud { padding: 3px 8px; gap: 2px; }
+    .chip { min-height: 22px; padding: 1px 6px; }
+    .hud-btn { width: 28px; height: 28px; }
     #pad { padding: 4px 12px calc(6px + env(safe-area-inset-bottom, 0px)); }
     .dpad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); gap: 5px; }
     .pad-btn { min-width: 44px; min-height: 44px; font-size: 18px; }
@@ -314,14 +319,21 @@
 <body>
 <div id="app">
   <header id="hud">
-    <div id="hudTitle">🎃 ボムボムパンプキン</div>
-    <div class="chip">⏱ <strong id="hudTime">3:00</strong></div>
-    <div class="chip">❤️ <strong id="hudLives">3</strong></div>
-    <div class="chip">👾 <strong id="hudCpu">3</strong></div>
-    <div class="chip" id="hudPower">🔥<strong id="hudRange">1</strong> 💣<strong id="hudBombs">1</strong> ⚡<strong id="hudSpeed">2.9</strong></div>
-    <button class="hud-btn" id="btnMute" type="button" aria-label="ミュート切替" title="ミュート (M)">🔊</button>
-    <button class="hud-btn" id="btnPause" type="button" aria-label="一時停止" title="一時停止 (P)">⏸</button>
-    <button class="hud-btn" id="btnHome" type="button" aria-label="トップへ" title="トップへ">🏠</button>
+    <div id="hudRow1">
+      <div class="chip"><span class="k">TIME</span><strong id="hudTime">3:00</strong></div>
+      <div class="chip"><span class="k">LIVES</span><strong id="hudLives">3</strong></div>
+      <div class="chip"><span class="k">SCORE</span><strong id="hudScore">0</strong></div>
+      <div class="chip"><span class="k">ROUND</span><strong id="hudRound">1/3</strong></div>
+      <div id="hudButtons">
+        <button class="hud-btn" id="btnMute" type="button" aria-label="ミュート切替" title="ミュート (M)">🔊</button>
+        <button class="hud-btn" id="btnPause" type="button" aria-label="一時停止" title="一時停止 (P)">⏸</button>
+        <button class="hud-btn" id="btnHome" type="button" aria-label="トップへ" title="トップへ">🏠</button>
+      </div>
+    </div>
+    <div id="hudRow2">
+      <div class="chip" id="hudPower"><span class="k">FIRE</span><strong id="hudRange">1</strong><span class="k">BOMB</span><strong id="hudBombs">1</strong><span class="k">SPEED</span><strong id="hudSpeed">3.7</strong></div>
+      <div class="chip"><span class="k">CPU</span><strong id="hudCpu">3</strong></div>
+    </div>
   </header>
 
   <main id="stage">

@@ -104,6 +104,7 @@
     this.keyDirs = {};
     this.padDirs = {};
     this.lastDir = null;
+    this.lastDirAt = 0;
     this.bombQueued = false;
     this.attached = false;
 
@@ -138,6 +139,7 @@
       if (!this.keyDirs[dir]) {
         this.keyDirs[dir] = true;
         this.lastDir = dir;
+        this.lastDirAt = Date.now();
       }
       return;
     }
@@ -165,7 +167,6 @@
     if (!dir) return;
     event.preventDefault();
     this.keyDirs[dir] = false;
-    if (this.lastDir === dir) this.lastDir = null;
   };
 
   InputHandler.prototype._onBlur = function () {
@@ -175,8 +176,10 @@
   InputHandler.prototype.setPad = function (dir, pressed) {
     if (!BM.DIR_VEC[dir]) return;
     this.padDirs[dir] = !!pressed;
-    if (pressed) this.lastDir = dir;
-    else if (this.lastDir === dir) this.lastDir = null;
+    if (pressed) {
+      this.lastDir = dir;
+      this.lastDirAt = Date.now();
+    }
   };
 
   InputHandler.prototype.pressBomb = function () {
@@ -193,6 +196,7 @@
     this.keyDirs = {};
     this.padDirs = {};
     this.lastDir = null;
+    this.lastDirAt = 0;
     this.bombQueued = false;
   };
 
@@ -203,8 +207,12 @@
       return !!self.keyDirs[name] || !!self.padDirs[name];
     }
 
+    var now = Date.now();
     var dir = this.lastDir;
-    if (!dir || !active(dir)) {
+    var held = dir ? active(dir) : false;
+    var tapped = dir && (now - this.lastDirAt) < 140;
+
+    if (!held && !tapped) {
       dir = null;
       var names = ['up', 'right', 'down', 'left'];
       for (var i = 0; i < names.length; i++) {

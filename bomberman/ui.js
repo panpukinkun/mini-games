@@ -10,6 +10,8 @@
     this.el = {
       time: $('hudTime'),
       lives: $('hudLives'),
+      score: $('hudScore'),
+      round: $('hudRound'),
       cpu: $('hudCpu'),
       range: $('hudRange'),
       bombs: $('hudBombs'),
@@ -204,6 +206,8 @@
     var ss = time % 60;
     var timeText = mm + ':' + (ss < 10 ? '0' + ss : ss);
     var cpu = world.aliveCPUs();
+    var score = (this.game.matchScore || 0) + (world.score || 0);
+    var round = this.game.round || 1;
 
     if (this._lastHud.time !== timeText) {
       this.el.time.textContent = timeText;
@@ -213,6 +217,14 @@
     if (this._lastHud.lives !== human.lives) {
       this.el.lives.textContent = String(Math.max(0, human.lives));
       this._lastHud.lives = human.lives;
+    }
+    if (this._lastHud.score !== score) {
+      this.el.score.textContent = String(score);
+      this._lastHud.score = score;
+    }
+    if (this._lastHud.round !== round) {
+      this.el.round.textContent = round + '/3';
+      this._lastHud.round = round;
     }
     if (this._lastHud.cpu !== cpu) {
       this.el.cpu.textContent = String(cpu);

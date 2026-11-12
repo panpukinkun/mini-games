@@ -51,6 +51,18 @@
 
       this.x = spawn.x + 0.5;
       this.y = spawn.y + 0.5;
+      this.tileX = spawn.x;
+      this.tileY = spawn.y;
+      this.fromX = spawn.x;
+      this.fromY = spawn.y;
+      this.toX = spawn.x;
+      this.toY = spawn.y;
+      this.moveProgress = 0;
+      this.moveDir = null;
+      this.desiredDir = null;
+      this.moving = false;
+      this.justArrived = false;
+      this.blocked = false;
       this.speed = isCPU ? this.diff.CPU_SPEED : this.diff.PLAYER_SPEED;
       this.maxBombs = C.START_BOMBS;
       this.range = C.START_RANGE;
@@ -87,18 +99,8 @@
       return false;
     }
 
-    update(dt, world, input) {
-      if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
-      this.anim += dt;
-
-      var cmd;
-      if (this.isCPU && this.ai) {
-        cmd = this.ai.think(this, world, dt);
-      } else {
-        var d = input ? input.getDirection() : { x: 0, y: 0 };
-        cmd = { x: d.x, y: d.y, bomb: input ? input.takeBomb() : false };
-      }
-
+    updateFree(dt, world, input) {
+      var cmd = this.ai.think(this, world, dt);
       if (cmd.bomb) this.placeBomb(world);
 
       var dx = cmd.x ? Math.sign(cmd.x) : 0;
@@ -119,11 +121,11 @@
 
       this.moving = !!(dx || dy);
 
-      if (dx) this.axisMove(world, dx * this.speed * dt, 0, dt);
-      else if (dy) this.axisMove(world, 0, dy * this.speed * dt, dt);
+      if (dx) this.axisMoveFree(world, dx * this.speed * dt, 0, dt);
+      else if (dy) this.axisMoveFree(world, 0, dy * this.speed * dt, dt);
     }
 
-    axisMove(world, mx, my, dt) {
+    axisMoveFree(world, mx, my, dt) {
       if (!this.collides(world, this.x + mx, this.y + my)) {
         this.x += mx;
         this.y += my;
@@ -137,18 +139,14 @@
         var diffY = cy - this.y;
         if (Math.abs(diffY) > 0.015 && Math.abs(diffY) <= C.CORNER_ASSIST) {
           var ny = this.y + Math.sign(diffY) * Math.min(Math.abs(diffY), assist);
-          if (!this.collides(world, this.x, ny)) {
-            this.y = ny;
-          }
+          if (!this.collides(world, this.x, ny)) this.y = ny;
         }
       } else if (my !== 0) {
         var cx = Math.floor(this.x) + 0.5;
         var diffX = cx - this.x;
         if (Math.abs(diffX) > 0.015 && Math.abs(diffX) <= C.CORNER_ASSIST) {
           var nx = this.x + Math.sign(diffX) * Math.min(Math.abs(diffX), assist);
-          if (!this.collides(world, nx, this.y)) {
-            this.x = nx;
-          }
+          if (!this.collides(world, nx, this.y)) this.x = nx;
         }
       }
 
@@ -158,12 +156,105 @@
       }
     }
 
+    canEnter(world, nx, ny) {
+      if (nx < 0 || ny < 0 || nx >= world.map.cols || ny >= world.map.rows) return false;
+      if (world.map.cell(nx, ny) !== BM.CELL.EMPTY) return false;
+      if (world.bombAt(nx, ny)) return false;
+      return true;
+    }
+
+    tryStart(world) {
+      var d = this.desiredDir;
+      if (!d) return false;
+      var nx = this.tileX + d.x;
+      var ny = this.tileY + d.y;
+      if (!this.canEnter(world, nx, ny)) {
+        this.blocked = true;
+        return false;
+      }
+
+      this.blocked = false;
+      this.fromX = this.tileX;
+      this.fromY = this.tileY;
+      this.toX = nx;
+      this.toY = ny;
+      this.moveDir = { x: d.x, y: d.y };
+      this.dir = { x: d.x, y: d.y };
+      this.moveProgress = 0;
+      this.moving = true;
+      return true;
+    }
+
+    update(dt, world, input) {
+      if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
+      this.anim += dt;
+
+      if (this.isCPU && this.ai) {
+        this.updateFree(dt, world, input);
+        return;
+      }
+
+      var d = input ? input.getDirection() : { x: 0, y: 0 };
+      var cmd = { x: d.x, y: d.y, bomb: input ? input.takeBomb() : false };
+
+      if (cmd.bomb) this.placeBomb(world);
+
+      var dx = cmd.x ? Math.sign(cmd.x) : 0;
+      var dy = cmd.y ? Math.sign(cmd.y) : 0;
+
+      if (dx && dy) {
+        if (this.lastAxis === 'x') dy = 0;
+        else dx = 0;
+      }
+
+      if (dx || dy) {
+        this.lastAxis = dx ? 'x' : 'y';
+        this.dir = { x: dx, y: dy };
+        this.desiredDir = { x: dx, y: dy };
+      } else {
+        this.desiredDir = null;
+      }
+
+      if (this.moving) {
+        this.moveProgress += this.speed * dt;
+        if (this.moveProgress >= 1) {
+          this.tileX = this.toX;
+          this.tileY = this.toY;
+          this.x = this.tileX + 0.5;
+          this.y = this.tileY + 0.5;
+          this.moveProgress = 0;
+          this.moving = false;
+          this.moveDir = null;
+          this.justArrived = true;
+          if (this.desiredDir) this.tryStart(world);
+        } else {
+          var p = this.moveProgress;
+          this.x = (this.fromX + 0.5) + (this.toX - this.fromX) * p;
+          this.y = (this.fromY + 0.5) + (this.toY - this.fromY) * p;
+        }
+      } else {
+        this.x = this.tileX + 0.5;
+        this.y = this.tileY + 0.5;
+        if (this.desiredDir) this.tryStart(world);
+      }
+    }
+
     placeBomb(world) {
       if (!this.alive) return false;
       if (this.activeBombs >= this.maxBombs) return false;
 
-      var cx = Math.floor(this.x);
-      var cy = Math.floor(this.y);
+      var cx;
+      var cy;
+      if (this.isCPU) {
+        cx = Math.floor(this.x);
+        cy = Math.floor(this.y);
+      } else if (this.moving) {
+        cx = Math.round(this.x - 0.5);
+        cy = Math.round(this.y - 0.5);
+      } else {
+        cx = this.tileX;
+        cy = this.tileY;
+      }
       if (world.map.cell(cx, cy) !== BM.CELL.EMPTY) return false;
       if (world.bombAt(cx, cy)) return false;
 
@@ -188,6 +279,10 @@
       this.lives--;
       this.alive = false;
       this.activeBombs = 0;
+      this.moving = false;
+      this.moveProgress = 0;
+      this.moveDir = null;
+      this.desiredDir = null;
 
       for (var i = 0; i < world.bombs.length; i++) {
         if (world.bombs[i].owner === this) world.bombs[i].owner = null;
@@ -214,6 +309,17 @@
 
       this.x = this.spawn.x + 0.5;
       this.y = this.spawn.y + 0.5;
+      this.tileX = this.spawn.x;
+      this.tileY = this.spawn.y;
+      this.fromX = this.spawn.x;
+      this.fromY = this.spawn.y;
+      this.toX = this.spawn.x;
+      this.toY = this.spawn.y;
+      this.moveProgress = 0;
+      this.moveDir = null;
+      this.desiredDir = null;
+      this.justArrived = false;
+      this.blocked = false;
       this.alive = true;
       this.invuln = C.INVULN_TIME;
       this.activeBombs = 0;
@@ -249,6 +355,8 @@
 
       this.timeLeft = this.diff.MATCH_TIME;
       this.elapsed = 0;
+      this.score = 0;
+      this.score = 0;
       this.outcome = null;
       this.shakeTime = 0;
       this.shakeMag = 0;
@@ -318,6 +426,7 @@
 
           if (cell === BM.CELL.SOFT) {
             this.map.destroySoft(cx, cy);
+            if (bomb.placer && bomb.placer.id === 0) this.score += 10;
             this.maybeSpawnItem(cx, cy);
             break;
           }
@@ -414,6 +523,7 @@
             var type = this.items.get(k);
             if (!type) continue;
             this.items.delete(k);
+            if (player.id === 0) this.score += 50;
             player.applyItem(type, this);
             this.burst(cx + 0.5, cy + 0.5, type === 'fire' ? '#ff9a3d' : type === 'bomb' ? '#b06bff' : '#4ad6a0', 14, 2.2);
           }
