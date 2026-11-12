@@ -8,7 +8,7 @@
 **クラシック風リニューアルを本番公開済み。CLI/ヘッドレス検証合格、実機スマホ確認待ち。**
 
 - 本番URL: `https://panpukinkun.github.io/mini-games/bomberman/`
-- 公開コミット: `c3ad3c7 fix(bomberman): 十字キーの過剰移動を修正`
+- 公開コミット: `2767624 fix(bomberman): 画面揺れを撤去しスコア表示を修正`
 - GitHub Pages: `built` / 本番 `index.html` はローカルとSHA256一致
 - 本番URLをChromiumヘッドレスで再操作し、READY/GO・難易度hard・古典HUD・移動・爆弾・ポーズ・モバイルパッド（スライド/タップ）・横向き・ハブQRまで合格
 
