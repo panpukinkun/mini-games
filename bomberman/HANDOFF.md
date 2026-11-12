@@ -8,9 +8,9 @@
 **クラシック風リニューアルを本番公開済み。CLI/ヘッドレス検証合格、実機スマホ確認待ち。**
 
 - 本番URL: `https://panpukinkun.github.io/mini-games/bomberman/`
-- 公開コミット: `b2b9640 feat(bomberman): クラシック風UIとグリッド操作に刷新`
+- 公開コミット: `b0ce5e8 feat(bomberman): 十字キーの反応とスライド操作を改善`
 - GitHub Pages: `built` / 本番 `index.html` はローカルとSHA256一致
-- 本番URLをChromiumヘッドレスで再操作し、READY/GO・難易度hard・古典HUD・移動・爆弾・ポーズ・モバイルパッド・横向き・ハブQRまで合格
+- 本番URLをChromiumヘッドレスで再操作し、READY/GO・難易度hard・古典HUD・移動・爆弾・ポーズ・モバイルパッド（スライド/タップ）・横向き・ハブQRまで合格
 
 - 人間: グリッド中心移動（1マス単位、停止時に中心へスナップ）
 - 入力: 先行入力バッファ（約140ms）＋移動中のターンバッファ（0.35秒）

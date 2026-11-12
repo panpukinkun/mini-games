@@ -13,7 +13,7 @@
 [x] Phase 6c: クラシック化（グリッド移動・タップバッファ・古典HUD・READY/GO・3本勝負・スコア・スプライト・十字火炎）
 [ ] Phase 6d: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開後
 [x] Phase 6e: D-pad単一サーフェス化・スライド・デッドゾーン・ターンバッファ・即時反転
-[x] Phase 7: クラシック版を本番反映・Pagesビルド・本番URL確認 — 完了（b2b9640）
+[x] Phase 7: クラシック版＋D-pad改善を本番反映・Pagesビルド・本番URL確認 — 完了（b0ce5e8）
 
 ## 手動確認チェックリスト
 - [ ] PC: 矢印/WASD＋Space、P/Escポーズ、Mミュートで1試合完走
