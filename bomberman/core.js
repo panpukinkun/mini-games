@@ -103,6 +103,7 @@
 
     this.keyDirs = {};
     this.padDirs = {};
+    this.dirPressAt = {};
     this.lastDir = null;
     this.lastDirAt = 0;
     this.bombQueued = false;
@@ -138,8 +139,9 @@
       event.preventDefault();
       if (!this.keyDirs[dir]) {
         this.keyDirs[dir] = true;
+        this.dirPressAt[dir] = Date.now();
         this.lastDir = dir;
-        this.lastDirAt = Date.now();
+        this.lastDirAt = this.dirPressAt[dir];
       }
       return;
     }
@@ -167,6 +169,13 @@
     if (!dir) return;
     event.preventDefault();
     this.keyDirs[dir] = false;
+    if (this.lastDir === dir) {
+      var held = Date.now() - (this.dirPressAt[dir] || 0);
+      if (held > 160) {
+        this.lastDir = null;
+        this.lastDirAt = 0;
+      }
+    }
   };
 
   InputHandler.prototype._onBlur = function () {
@@ -177,8 +186,15 @@
     if (!BM.DIR_VEC[dir]) return;
     this.padDirs[dir] = !!pressed;
     if (pressed) {
+      this.dirPressAt[dir] = Date.now();
       this.lastDir = dir;
-      this.lastDirAt = Date.now();
+      this.lastDirAt = this.dirPressAt[dir];
+    } else if (this.lastDir === dir) {
+      var held = Date.now() - (this.dirPressAt[dir] || 0);
+      if (held > 160) {
+        this.lastDir = null;
+        this.lastDirAt = 0;
+      }
     }
   };
 
@@ -195,9 +211,17 @@
   InputHandler.prototype.clear = function () {
     this.keyDirs = {};
     this.padDirs = {};
+    this.dirPressAt = {};
     this.lastDir = null;
     this.lastDirAt = 0;
     this.bombQueued = false;
+  };
+
+  InputHandler.prototype.consumeTap = function () {
+    if (this.lastDir && !this.keyDirs[this.lastDir] && !this.padDirs[this.lastDir]) {
+      this.lastDir = null;
+      this.lastDirAt = 0;
+    }
   };
 
   InputHandler.prototype.getDirection = function () {
@@ -207,12 +231,8 @@
       return !!self.keyDirs[name] || !!self.padDirs[name];
     }
 
-    var now = Date.now();
     var dir = this.lastDir;
-    var held = dir ? active(dir) : false;
-    var tapped = dir && (now - this.lastDirAt) < 140;
-
-    if (!held && !tapped) {
+    if (!dir || !active(dir)) {
       dir = null;
       var names = ['up', 'right', 'down', 'left'];
       for (var i = 0; i < names.length; i++) {
@@ -224,6 +244,15 @@
     }
 
     return dir ? BM.DIR_VEC[dir] : { x: 0, y: 0 };
+  };
+
+  InputHandler.prototype.getTapDirection = function () {
+    var dir = this.lastDir;
+    if (!dir) return { x: 0, y: 0 };
+    var active = !!this.keyDirs[dir] || !!this.padDirs[dir];
+    if (active) return { x: 0, y: 0 };
+    if (Date.now() - this.lastDirAt > 160) return { x: 0, y: 0 };
+    return BM.DIR_VEC[dir];
   };
 
   BM.InputHandler = InputHandler;

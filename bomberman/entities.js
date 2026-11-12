@@ -165,8 +165,8 @@
       return true;
     }
 
-    tryStart(world) {
-      var d = this.desiredDir;
+    tryStart(world, dir) {
+      var d = dir || this.desiredDir;
       if (!d) return false;
       var nx = this.tileX + d.x;
       var ny = this.tileY + d.y;
@@ -187,6 +187,24 @@
       return true;
     }
 
+    reverseMove(world, dx, dy) {
+      if (!this.moving || !this.moveDir) return false;
+      if (dx !== -this.moveDir.x || dy !== -this.moveDir.y) return false;
+      if (!this.canEnter(world, this.fromX, this.fromY)) return false;
+      var fx = this.fromX;
+      var fy = this.fromY;
+      this.fromX = this.toX;
+      this.fromY = this.toY;
+      this.toX = fx;
+      this.toY = fy;
+      this.moveProgress = 1 - this.moveProgress;
+      this.moveDir = { x: dx, y: dy };
+      this.dir = { x: dx, y: dy };
+      this.turnDir = null;
+      this.turnTime = 0;
+      return true;
+    }
+
     update(dt, world, input) {
       if (this.invuln > 0) this.invuln = Math.max(0, this.invuln - dt);
       this.anim += dt;
@@ -196,48 +214,52 @@
         return;
       }
 
-      var d = input ? input.getDirection() : { x: 0, y: 0 };
-      var cmd = { x: d.x, y: d.y, bomb: input ? input.takeBomb() : false };
-
-      if (cmd.bomb) this.placeBomb(world);
-
-      var dx = cmd.x ? Math.sign(cmd.x) : 0;
-      var dy = cmd.y ? Math.sign(cmd.y) : 0;
-
-      if (dx && dy) {
-        if (this.lastAxis === 'x') dy = 0;
-        else dx = 0;
-      }
+      var held = input ? input.getDirection() : { x: 0, y: 0 };
+      var tap = (input && input.getTapDirection) ? input.getTapDirection() : { x: 0, y: 0 };
+      if (input && input.takeBomb()) this.placeBomb(world);
 
       if (this.turnTime > 0) this.turnTime = Math.max(0, this.turnTime - dt);
 
-      if (dx || dy) {
-        this.lastAxis = dx ? 'x' : 'y';
-        this.dir = { x: dx, y: dy };
-        this.desiredDir = { x: dx, y: dy };
+      var hx = held.x ? Math.sign(held.x) : 0;
+      var hy = held.y ? Math.sign(held.y) : 0;
+      if (hx && hy) {
+        if (this.lastAxis === 'x') hy = 0;
+        else hx = 0;
+      }
 
+      if (hx || hy) {
+        this.lastAxis = hx ? 'x' : 'y';
+        this.dir = { x: hx, y: hy };
+        this.desiredDir = { x: hx, y: hy };
         if (this.moving) {
-          this.turnDir = { x: dx, y: dy };
-          this.turnTime = 0.35;
-
-          // instant reverse (keeps the player on the grid line)
-          if (this.moveDir &&
-              dx === -this.moveDir.x && dy === -this.moveDir.y &&
-              this.canEnter(world, this.fromX, this.fromY)) {
-            var fx = this.fromX;
-            var fy = this.fromY;
-            this.fromX = this.toX;
-            this.fromY = this.toY;
-            this.toX = fx;
-            this.toY = fy;
-            this.moveProgress = 1 - this.moveProgress;
-            this.moveDir = { x: dx, y: dy };
-            this.turnDir = null;
-            this.turnTime = 0;
+          if (!this.reverseMove(world, hx, hy) &&
+              (hx !== this.moveDir.x || hy !== this.moveDir.y)) {
+            this.turnDir = { x: hx, y: hy };
+            this.turnTime = 0.35;
           }
         }
       } else {
         this.desiredDir = null;
+        var tx = tap.x ? Math.sign(tap.x) : 0;
+        var ty = tap.y ? Math.sign(tap.y) : 0;
+
+        if (this.moving) {
+          if (tx || ty) {
+            this.lastAxis = tx ? 'x' : 'y';
+            this.dir = { x: tx, y: ty };
+            if (!this.reverseMove(world, tx, ty) &&
+                (tx !== this.moveDir.x || ty !== this.moveDir.y)) {
+              this.turnDir = { x: tx, y: ty };
+              this.turnTime = 0.35;
+            }
+            if (input && input.consumeTap) input.consumeTap();
+          }
+        } else if (tx || ty) {
+          this.lastAxis = tx ? 'x' : 'y';
+          this.dir = { x: tx, y: ty };
+          this.tryStart(world, { x: tx, y: ty });
+          if (input && input.consumeTap) input.consumeTap();
+        }
       }
 
       if (this.moving) {

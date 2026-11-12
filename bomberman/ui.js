@@ -153,6 +153,7 @@
       var dead = Math.min(padRect.width, padRect.height) * 0.16;
       if (dx * dx + dy * dy < dead * dead) {
         setDir(null);
+        if (game.input.consumeTap) game.input.consumeTap();
         return;
       }
       setDir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
