@@ -14,7 +14,10 @@
       round: $('hudRound'),
       roundLabel: $('hudRoundLabel'),
       cpu: $('hudCpu'),
+      cpuChip: $('hudCpuChip'),
       cpuLabel: $('hudCpuLabel'),
+      enemy: $('hudEnemy'),
+      enemyChip: $('hudEnemyChip'),
       range: $('hudRange'),
       bombs: $('hudBombs'),
       speed: $('hudSpeed'),
@@ -289,7 +292,7 @@
       btn.classList.toggle('on', on);
     }
     if (this._modeVisible) {
-      this.el.cpuRow.style.display = mode === 'battle' ? 'flex' : 'none';
+      this.el.cpuRow.style.display = (mode === 'battle' || mode === 'mixed') ? 'flex' : 'none';
       this.el.carryRow.style.display = mode === 'stage' ? 'flex' : 'none';
     }
   };
@@ -348,12 +351,19 @@
     var ss = time % 60;
     var timeText = mm + ':' + (ss < 10 ? '0' + ss : ss);
     var stageMode = this.game.mode === 'stage';
-    var cpu = stageMode ? world.aliveEnemies() : world.aliveCPUs();
+    var mixedMode = this.game.mode === 'mixed';
+    var cpu = world.aliveCPUs ? world.aliveCPUs() : 0;
+    var cpuTotal = world.cpuTotal || 0;
+    var enemy = world.aliveEnemies ? world.aliveEnemies() : 0;
+    var enemyTotal = world.enemyTotal || 0;
     var score = (this.game.matchScore || 0) + (world.score || 0);
     var round = stageMode ? (this.game.stage || 1) : (this.game.round || 1);
     var roundText = stageMode ? (round + '/' + BM.STAGE_COUNT) : (round + '/3');
     var roundLabel = stageMode ? 'STAGE' : 'ROUND';
-    var cpuLabel = stageMode ? 'ENEMY' : 'CPU';
+    var cpuLabel = 'CPU';
+
+    if (this.el.cpuChip) this.el.cpuChip.style.display = stageMode ? 'none' : 'inline-flex';
+    if (this.el.enemyChip) this.el.enemyChip.style.display = (stageMode || mixedMode) ? 'inline-flex' : 'none';
 
     if (this._lastHud.time !== timeText) {
       this.el.time.textContent = timeText;
@@ -374,11 +384,17 @@
       this._lastHud.round = roundText;
       this._lastHud.roundLabel = roundLabel;
     }
-    if (this._lastHud.cpu !== cpu || this._lastHud.cpuLabel !== cpuLabel) {
-      this.el.cpu.textContent = String(cpu);
+    var cpuText = cpu + '/' + cpuTotal;
+    if (this._lastHud.cpu !== cpuText || this._lastHud.cpuLabel !== cpuLabel) {
+      this.el.cpu.textContent = cpuText;
       this.el.cpuLabel.textContent = cpuLabel;
-      this._lastHud.cpu = cpu;
+      this._lastHud.cpu = cpuText;
       this._lastHud.cpuLabel = cpuLabel;
+    }
+    var enemyText = enemy + '/' + enemyTotal;
+    if (this._lastHud.enemy !== enemyText) {
+      this.el.enemy.textContent = enemyText;
+      this._lastHud.enemy = enemyText;
     }
     if (this._lastHud.range !== human.range) {
       this.el.range.textContent = String(human.range);

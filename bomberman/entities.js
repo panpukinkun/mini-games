@@ -501,7 +501,7 @@
   class World {
     constructor(difficultyKey, options) {
       this.options = options || {};
-      this.mode = this.options.mode === 'stage' ? 'stage' : 'battle';
+      this.mode = (this.options.mode === 'stage' || this.options.mode === 'mixed') ? this.options.mode : 'battle';
       this.difficultyKey = BM.DIFFICULTY[difficultyKey] ? difficultyKey : BM.DEFAULT_DIFFICULTY;
       this.diff = BM.DIFFICULTY[this.difficultyKey];
       this.map = new BM.MapManager();
@@ -518,6 +518,8 @@
 
       this.players = [];
       this.enemies = [];
+      this.cpuTotal = 0;
+      this.enemyTotal = 0;
       this.exit = null;
       this.powerupCell = null;
       this.powerupType = 'fire';
@@ -557,7 +559,34 @@
           var color = isCPU ? C.COLORS.cpus[i - 1] : C.COLORS.player;
           this.players.push(new Player(i, C.NAMES[i], isCPU, color, C.SPAWNS[i], this.diff));
         }
+        this.cpuTotal = this.players.length - 1;
+        if (this.mode === 'mixed') {
+          this.setupMixed();
+        }
       }
+    }
+
+    setupMixed() {
+      var spawn = C.SPAWNS[0];
+      var candidates = [];
+      for (var y = 1; y < this.map.rows - 1; y++) {
+        for (var x = 1; x < this.map.cols - 1; x++) {
+          if (this.map.cell(x, y) !== BM.CELL.EMPTY) continue;
+          if (Math.abs(x - spawn.x) + Math.abs(y - spawn.y) < 4) continue;
+          candidates.push({ x: x, y: y });
+        }
+      }
+      for (var i = candidates.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = candidates[i]; candidates[i] = candidates[j]; candidates[j] = tmp;
+      }
+      var types = BM.MIX_ENEMIES.slice(0, Math.max(3, Math.min(6, 3 + this.cpuTotal)));
+      for (var t = 0; t < types.length; t++) {
+        var cell = candidates.pop();
+        if (!cell) break;
+        this.enemies.push(new Enemy(types[t], cell.x, cell.y, this));
+      }
+      this.enemyTotal = this.enemies.length;
     }
 
     setupStage(cfg) {
@@ -605,6 +634,7 @@
         if (!cell) break;
         this.enemies.push(new Enemy(cfg.enemies[e], cell.x, cell.y, this));
       }
+      this.enemyTotal = this.enemies.length;
     }
 
     onSoftDestroyed(cx, cy) {
@@ -821,7 +851,7 @@
         if (hit) player.hit(this);
       }
 
-      if (this.mode === 'stage') {
+      if (this.mode === 'stage' || this.mode === 'mixed') {
         for (var e = 0; e < this.enemies.length; e++) {
           var enemy = this.enemies[e];
           if (!enemy.alive) continue;
@@ -901,6 +931,11 @@
         return;
       }
 
+      if (this.mode === 'mixed') {
+        if (this.aliveCPUs() === 0) this.outcome = 'win';
+        return;
+      }
+
       if (this.aliveCPUs() === 0) {
         this.outcome = 'win';
       }
@@ -920,7 +955,7 @@
         else player.updateDead(dt, this);
       }
 
-      if (this.mode === 'stage') {
+      if (this.mode === 'stage' || this.mode === 'mixed') {
         for (var e = 0; e < this.enemies.length; e++) {
           if (this.enemies[e].alive) this.enemies[e].update(dt, this);
         }

@@ -12,11 +12,13 @@
     this.cols = C.COLS;
     this.rows = C.ROWS;
     this.grid = [];
+    this.version = 0;
     this.generate();
   }
 
   MapManager.prototype.generate = function (softChance) {
     var C = BM.CONFIG;
+    this.version = (this.version || 0) + 1;
     var chance = typeof softChance === 'number' ? softChance : C.SOFT_CHANCE;
     var cols = this.cols;
     var rows = this.rows;
@@ -89,6 +91,7 @@
   MapManager.prototype.destroySoft = function (x, y) {
     if (this.cell(x, y) !== SOFT) return false;
     this.grid[y][x] = EMPTY;
+    this.version = (this.version || 0) + 1;
     return true;
   };
 

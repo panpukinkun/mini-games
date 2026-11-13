@@ -15,7 +15,7 @@
     this.difficulty = BM.Storage.get('bm_difficulty', BM.DEFAULT_DIFFICULTY);
     if (!BM.DIFFICULTY[this.difficulty]) this.difficulty = BM.DEFAULT_DIFFICULTY;
     this.mode = BM.Storage.get('bm_mode', 'stage');
-    if (this.mode !== 'stage' && this.mode !== 'battle') this.mode = 'stage';
+    if (this.mode !== 'stage' && this.mode !== 'battle' && this.mode !== 'mixed') this.mode = 'stage';
     this.cpuCount = Math.max(1, Math.min(3, Number(BM.Storage.get('bm_cpu', 3)) || 3));
     this.carryPower = BM.Storage.get('bm_carry', true) !== false;
     this.stage = 1;
@@ -38,6 +38,9 @@
     this._spriteDpr = 0;
     this._bgGradient = null;
     this._bgKey = '';
+    this._boardCache = null;
+    this._boardKey = '';
+    this._boardWorld = null;
 
     this._bindWindow();
     this._installViewGuards();
@@ -55,7 +58,7 @@
         carryPower: this.carryPower
       };
     }
-    return { mode: 'battle', cpuCount: this.cpuCount };
+    return { mode: this.mode === 'mixed' ? 'mixed' : 'battle', cpuCount: this.cpuCount };
   };
 
   Game.prototype._bindWindow = function () {
@@ -160,6 +163,9 @@
     };
     this.sprites = null;
     this._bgGradient = null;
+    this._boardCache = null;
+    this._boardKey = '';
+    this._boardWorld = null;
   };
 
   Game.prototype.setDifficulty = function (key) {
@@ -173,11 +179,11 @@
   };
 
   Game.prototype.setMode = function (mode) {
-    if (this.state !== 'title' || (mode !== 'stage' && mode !== 'battle')) return;
+    if (this.state !== 'title' || (mode !== 'stage' && mode !== 'battle' && mode !== 'mixed')) return;
     this.mode = mode;
     BM.Storage.set('bm_mode', mode);
     this.ui.setMode(mode);
-    this.ui.toast(mode === 'stage' ? 'ステージモード' : 'たいせんモード');
+    this.ui.toast(mode === 'stage' ? 'ステージモード' : mode === 'mixed' ? 'ミックスモード' : 'たいせんモード');
     this.showTitle();
   };
 
@@ -215,13 +221,16 @@
       record = '<br><br>これまでの成績: <b>勝 ' + (s.wins || 0) + '</b> / 負 ' + (s.losses || 0) + ' / 引き分け ' + (s.draws || 0) + '</b>';
     }
 
-    var body = this.mode === 'stage'
-      ? '全5ステージ。敵をぜんぶ倒して、かべの下の出口をさがそう。<br>爆風に当たるとライフが減るよ。' +
-        '<br><br><b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
-        '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' + record
-      : '1人 vs CPU。3本勝負（2本先取）で勝負！<br>CPUの人数を選べます。' +
-        '<br><br><b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
-        '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' + record;
+    var howto = '<br><br><b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
+      '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' + record;
+    var body;
+    if (this.mode === 'stage') {
+      body = '全5ステージ。敵をぜんぶ倒して、かべの下の出口をさがそう。<br>爆風に当たるとライフが減るよ。' + howto;
+    } else if (this.mode === 'mixed') {
+      body = 'CPU 1〜3体＋モンスターが同時に登場！<br>CPUを全滅させれば勝ち。モンスターは妨害役。' + howto;
+    } else {
+      body = '1人 vs CPU。3本勝負（2本先取）で勝負！<br>CPUの人数を選べます。' + howto;
+    }
 
     this.ui.showOverlay({
       title: '🎃 ボムボムパンプキン',
@@ -259,7 +268,10 @@
 
   Game.prototype.startRound = function () {
     this.audio.unlock();
-    this.world = new BM.World(this.difficulty, { mode: 'battle', cpuCount: this.cpuCount });
+    this.world = new BM.World(this.difficulty, {
+      mode: this.mode === 'mixed' ? 'mixed' : 'battle',
+      cpuCount: this.cpuCount
+    });
     this.state = 'ready';
     this.readyTimer = 1.8;
     this._resultShown = false;
@@ -725,33 +737,51 @@
     ctx.closePath();
   };
 
-  Game.prototype._drawBoard = function (ctx, b) {
+  Game.prototype._ensureBoardCache = function () {
+    var b = this.board;
     var t = b.tile;
-    var map = this.world.map;
+    var dpr = this.dpr;
+    if (!t || !dpr) return;
+    var key = (this.world.map.version || 0) + ':' + t + ':' + dpr;
+    if (this._boardCache && this._boardKey === key && this._boardWorld === this.world) return;
 
-    ctx.save();
-    ctx.shadowColor = 'rgba(255, 154, 61, 0.18)';
-    ctx.shadowBlur = Math.max(10, t * 0.7);
-    ctx.fillStyle = 'rgba(10, 6, 20, 0.72)';
-    this._roundRect(ctx, b.ox - 6, b.oy - 6, b.w + 12, b.h + 12, t * 0.32);
-    ctx.fill();
-    ctx.restore();
+    this._ensureSprites();
+    var cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.ceil(b.w * dpr));
+    cv.height = Math.max(1, Math.ceil(b.h * dpr));
+    var c = cv.getContext('2d');
+    if (c.setTransform) c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = 'rgba(10, 6, 20, 0.72)';
+    this._roundRect(c, 0, 0, b.w, b.h, t * 0.32);
+    c.fill();
 
-    for (var y = 0; y < map.rows; y++) {
-      for (var x = 0; x < map.cols; x++) {
-        var px = b.ox + x * t;
-        var py = b.oy + y * t;
-        var cell = map.cell(x, y);
-
+    for (var y = 0; y < this.world.map.rows; y++) {
+      for (var x = 0; x < this.world.map.cols; x++) {
+        var cell = this.world.map.cell(x, y);
+        var sx = x * t;
+        var sy = y * t;
         if (cell === BM.CELL.HARD) {
-          ctx.drawImage(this.sprites.hard, px, py, t, t);
+          c.drawImage(this.sprites.hard, sx, sy, t, t);
         } else if (cell === BM.CELL.SOFT) {
-          ctx.drawImage(this.sprites.soft, px, py, t, t);
+          c.drawImage(this.sprites.soft, sx, sy, t, t);
         } else {
-          ctx.drawImage((x + y) % 2 === 0 ? this.sprites.floorA : this.sprites.floorB, px, py, t, t);
+          c.drawImage((x + y) % 2 === 0 ? this.sprites.floorA : this.sprites.floorB, sx, sy, t, t);
         }
       }
     }
+    c.strokeStyle = 'rgba(255, 176, 92, 0.20)';
+    c.lineWidth = Math.max(1, t * 0.035);
+    this._roundRect(c, 0.5, 0.5, b.w - 1, b.h - 1, t * 0.28);
+    c.stroke();
+
+    this._boardCache = cv;
+    this._boardKey = key;
+    this._boardWorld = this.world;
+  };
+
+  Game.prototype._drawBoard = function (ctx, b) {
+    this._ensureBoardCache();
+    ctx.drawImage(this._boardCache, b.ox, b.oy, b.w, b.h);
   };
 
   Game.prototype._drawHard = function (ctx, x, y, t) {

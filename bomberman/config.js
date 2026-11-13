@@ -97,7 +97,7 @@
   BM.ENEMY_TYPES = {
     walker: { speed: 1.15, score: 100, color: '#ff8a2a', passSoft: false },
     chaser: { speed: 1.65, score: 200, color: '#b06bff', passSoft: false },
-    ghost: { speed: 1.35, score: 400, color: '#4ad6a0', passSoft: true }
+    ghost: { speed: 1.35, score: 400, color: '#4ad6a0', passSoft: false }
   };
 
   BM.STAGES = [
@@ -108,4 +108,5 @@
     { n: 5, time: 200, soft: 0.62, enemies: ['walker', 'walker', 'chaser', 'chaser', 'chaser', 'ghost'] }
   ];
   BM.STAGE_COUNT = BM.STAGES.length;
+  BM.MIX_ENEMIES = ['walker', 'walker', 'chaser', 'chaser', 'ghost'];
 })();

@@ -397,7 +397,8 @@
     </div>
     <div id="hudRow2">
       <div class="chip" id="hudPower"><span class="k">FIRE</span><strong id="hudRange">1</strong><span class="k">BOMB</span><strong id="hudBombs">1</strong><span class="k">SPEED</span><strong id="hudSpeed">3.7</strong></div>
-      <div class="chip"><span class="k" id="hudCpuLabel">CPU</span><strong id="hudCpu">3</strong></div>
+      <div class="chip" id="hudCpuChip"><span class="k" id="hudCpuLabel">CPU</span><strong id="hudCpu">3/3</strong></div>
+      <div class="chip" id="hudEnemyChip"><span class="k">ENEMY</span><strong id="hudEnemy">0</strong></div>
     </div>
   </header>
 
@@ -423,6 +424,7 @@
     <div id="ovMode" class="seg-row" role="group" aria-label="モード">
       <button class="seg-btn" data-mode="stage" type="button" aria-pressed="false">ステージ</button>
       <button class="seg-btn" data-mode="battle" type="button" aria-pressed="false">たいせん</button>
+      <button class="seg-btn" data-mode="mixed" type="button" aria-pressed="false">ミックス</button>
     </div>
     <div id="ovCpu" class="seg-row" role="group" aria-label="CPU人数">
       <button class="seg-btn" data-cpu="1" type="button" aria-pressed="false">CPU 1</button>
