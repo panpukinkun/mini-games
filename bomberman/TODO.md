@@ -21,8 +21,8 @@
 [x] Phase 6k: モード選択（ステージ/たいせん）、CPU人数1〜3
 [x] Phase 6l: HUD/勝敗表示（STAGE/ENEMY、STAGE CLEAR、ALL CLEAR、GAME OVER）
 [x] Phase 6m: ステージ到達性・出口・引き継ぎ・クリア条件の検証
-[ ] Phase 6n: iPad実機でズーム・爆弾・画面復帰を確認 — 公開前
-[ ] Phase 7: 全修正後に一度だけビルド・Pages・本番URL確認
+[ ] Phase 6n: iPad実機でズーム・爆弾・画面復帰を確認 — 公開済み・確認待ち
+[x] Phase 7: 全修正後に一度だけビルド・Pages・本番URL確認 — 完了（d3ae9e5）
 
 ## 手動確認チェックリスト
 - [ ] iPad: D-padダブルタップでズームしない
