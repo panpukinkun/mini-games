@@ -16,6 +16,9 @@ node tools/playtest.js [runs] [difficulty] [baseSeed]
 
 node tools/longrun.js [seconds] [difficulty] [seed]
 # 長時間実行して、爆弾・パーティクル・アイテム・爆風・イベントの増加を確認
+
+node tools/stage_check.js [maps]
+# ステージ生成の到達性・出口・敵・クリア条件・パワーアップ引き継ぎを検証
 ```
 
 要因調査時は `debug.js` のトレースと死亡グリッドを確認してください。

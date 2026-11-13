@@ -15,8 +15,9 @@
     this.generate();
   }
 
-  MapManager.prototype.generate = function () {
+  MapManager.prototype.generate = function (softChance) {
     var C = BM.CONFIG;
+    var chance = typeof softChance === 'number' ? softChance : C.SOFT_CHANCE;
     var cols = this.cols;
     var rows = this.rows;
     var x;
@@ -48,7 +49,7 @@
       for (x = 1; x < cols - 1; x++) {
         if (this.grid[y][x] !== EMPTY) continue;
         if (safe[BM.key(x, y)]) continue;
-        if (Math.random() < C.SOFT_CHANCE) {
+        if (Math.random() < chance) {
           this.grid[y][x] = SOFT;
           softCount++;
         }

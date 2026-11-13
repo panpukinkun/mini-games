@@ -387,8 +387,121 @@
     }
   }
 
+  class Enemy {
+    constructor(type, tx, ty, world) {
+      var spec = BM.ENEMY_TYPES[type] || BM.ENEMY_TYPES.walker;
+      this.type = type;
+      this.spec = spec;
+      this.alive = true;
+      this.speed = spec.speed;
+      this.passSoft = !!spec.passSoft;
+      this.tileX = tx;
+      this.tileY = ty;
+      this.x = tx + 0.5;
+      this.y = ty + 0.5;
+      this.fromX = tx;
+      this.fromY = ty;
+      this.toX = tx;
+      this.toY = ty;
+      this.moveProgress = 0;
+      this.moveDir = null;
+      this.moving = false;
+      this.dir = { x: 0, y: 1 };
+      this.anim = Math.random() * Math.PI * 2;
+    }
+
+    canEnter(world, nx, ny) {
+      if (nx < 0 || ny < 0 || nx >= world.map.cols || ny >= world.map.rows) return false;
+      var cell = world.map.cell(nx, ny);
+      if (cell === BM.CELL.HARD) return false;
+      if (cell === BM.CELL.SOFT && !this.passSoft) return false;
+      if (world.bombAt(nx, ny)) return false;
+      return true;
+    }
+
+    startMove(dir, world) {
+      var nx = this.tileX + dir.x;
+      var ny = this.tileY + dir.y;
+      if (!this.canEnter(world, nx, ny)) return false;
+      this.fromX = this.tileX;
+      this.fromY = this.tileY;
+      this.toX = nx;
+      this.toY = ny;
+      this.moveDir = { x: dir.x, y: dir.y };
+      this.dir = { x: dir.x, y: dir.y };
+      this.moveProgress = 0;
+      this.moving = true;
+      return true;
+    }
+
+    chooseDir(world) {
+      var self = this;
+      var dirs = BM.DIRS.slice();
+      var player = world.players[0];
+      if ((this.type === 'chaser' || this.type === 'ghost') && player && player.alive) {
+        var pc = { x: Math.floor(player.x), y: Math.floor(player.y) };
+        dirs.sort(function (a, b) {
+          var da = Math.abs(self.tileX + a.x - pc.x) + Math.abs(self.tileY + a.y - pc.y);
+          var db = Math.abs(self.tileX + b.x - pc.x) + Math.abs(self.tileY + b.y - pc.y);
+          return da - db;
+        });
+      } else {
+        dirs.sort(function () { return Math.random() - 0.5; });
+        if (this.moveDir && Math.random() < 0.55) {
+          dirs.unshift({ x: this.moveDir.x, y: this.moveDir.y });
+        }
+      }
+      for (var i = 0; i < dirs.length; i++) {
+        if (this.canEnter(world, this.tileX + dirs[i].x, this.tileY + dirs[i].y)) return dirs[i];
+      }
+      return null;
+    }
+
+    update(dt, world) {
+      if (!this.alive) return;
+      this.anim += dt;
+
+      if (this.moving) {
+        this.moveProgress += this.speed * dt;
+        if (this.moveProgress >= 1) {
+          this.tileX = this.toX;
+          this.tileY = this.toY;
+          this.x = this.tileX + 0.5;
+          this.y = this.tileY + 0.5;
+          this.moveProgress = 0;
+          this.moving = false;
+          this.moveDir = null;
+        } else {
+          this.x = (this.fromX + 0.5) + (this.toX - this.fromX) * this.moveProgress;
+          this.y = (this.fromY + 0.5) + (this.toY - this.fromY) * this.moveProgress;
+        }
+      }
+
+      if (!this.moving) {
+        var d = this.chooseDir(world);
+        if (d) this.startMove(d, world);
+      }
+
+      var player = world.players[0];
+      if (player && player.alive && player.invuln <= 0 &&
+          Math.abs(player.x - this.x) < 0.55 && Math.abs(player.y - this.y) < 0.55) {
+        player.hit(world);
+      }
+    }
+
+    hit(world) {
+      if (!this.alive) return;
+      this.alive = false;
+      world.score += this.spec.score;
+      world.burst(this.x, this.y, this.spec.color, 16, 2.6);
+      world.events.push('enemy');
+    }
+  }
+
   class World {
-    constructor(difficultyKey) {
+    constructor(difficultyKey, options) {
+      this.options = options || {};
+      this.mode = this.options.mode === 'stage' ? 'stage' : 'battle';
       this.difficultyKey = BM.DIFFICULTY[difficultyKey] ? difficultyKey : BM.DEFAULT_DIFFICULTY;
       this.diff = BM.DIFFICULTY[this.difficultyKey];
       this.map = new BM.MapManager();
@@ -396,9 +509,18 @@
     }
 
     reset() {
-      this.map.generate();
+      var stageCfg = this.mode === 'stage'
+        ? BM.STAGES[Math.max(0, Math.min(BM.STAGES.length - 1, (this.options.stage || 1) - 1))]
+        : null;
+      this.stageCfg = stageCfg;
+      this.stage = stageCfg ? stageCfg.n : null;
+      this.map.generate(stageCfg ? stageCfg.soft : undefined);
 
       this.players = [];
+      this.enemies = [];
+      this.exit = null;
+      this.powerupCell = null;
+      this.powerupType = 'fire';
       this.bombs = [];
       this.bombGrid = new Map();
       this.explosions = new Map();
@@ -408,18 +530,109 @@
       this.explosionQueue = [];
       this.events = [];
 
-      this.timeLeft = this.diff.MATCH_TIME;
+      this.timeLeft = stageCfg ? stageCfg.time : this.diff.MATCH_TIME;
       this.elapsed = 0;
-      this.score = 0;
       this.score = 0;
       this.outcome = null;
       this.nextBombId = 1;
 
-      for (var i = 0; i < C.SPAWNS.length; i++) {
-        var isCPU = i > 0;
-        var color = isCPU ? C.COLORS.cpus[i - 1] : C.COLORS.player;
-        this.players.push(new Player(i, C.NAMES[i], isCPU, color, C.SPAWNS[i], this.diff));
+      if (stageCfg) {
+        var human = new Player(0, C.NAMES[0], false, C.COLORS.player, C.SPAWNS[0], this.diff);
+        var carry = this.options.carry;
+        if (carry) {
+          if (carry.lives != null) human.lives = carry.lives;
+          if (this.options.carryPower !== false) {
+            if (carry.range != null) human.range = carry.range;
+            if (carry.maxBombs != null) human.maxBombs = carry.maxBombs;
+            if (carry.speed != null) human.speed = carry.speed;
+          }
+        }
+        this.players.push(human);
+        this.setupStage(stageCfg);
+      } else {
+        var cpuCount = Math.max(1, Math.min(3, this.options.cpuCount || 3));
+        var count = Math.min(C.SPAWNS.length, 1 + cpuCount);
+        for (var i = 0; i < count; i++) {
+          var isCPU = i > 0;
+          var color = isCPU ? C.COLORS.cpus[i - 1] : C.COLORS.player;
+          this.players.push(new Player(i, C.NAMES[i], isCPU, color, C.SPAWNS[i], this.diff));
+        }
       }
+    }
+
+    setupStage(cfg) {
+      var self = this;
+      var softs = [];
+      for (var y = 1; y < this.map.rows - 1; y++) {
+        for (var x = 1; x < this.map.cols - 1; x++) {
+          if (this.map.isSoft(x, y)) softs.push({ x: x, y: y });
+        }
+      }
+      for (var i = softs.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = softs[i]; softs[i] = softs[j]; softs[j] = tmp;
+      }
+
+      var exitCell = softs.pop() || null;
+      if (exitCell) {
+        this.exit = { x: exitCell.x, y: exitCell.y, revealed: false };
+      } else {
+        this.exit = { x: C.SPAWNS[0].x, y: C.SPAWNS[0].y - 1, revealed: true };
+      }
+      var powerCell = softs.pop() || null;
+      if (powerCell) {
+        this.powerupCell = { x: powerCell.x, y: powerCell.y };
+        this.powerupType = BM.choice(['fire', 'bomb', 'speed']);
+      }
+
+      var spawn = C.SPAWNS[0];
+      var candidates = [];
+      for (var yy = 1; yy < this.map.rows - 1; yy++) {
+        for (var xx = 1; xx < this.map.cols - 1; xx++) {
+          if (this.map.cell(xx, yy) !== BM.CELL.EMPTY) continue;
+          if (Math.abs(xx - spawn.x) + Math.abs(yy - spawn.y) < 4) continue;
+          if (this.exit && this.exit.x === xx && this.exit.y === yy) continue;
+          if (this.powerupCell && this.powerupCell.x === xx && this.powerupCell.y === yy) continue;
+          candidates.push({ x: xx, y: yy });
+        }
+      }
+      for (var k = candidates.length - 1; k > 0; k--) {
+        var m = Math.floor(Math.random() * (k + 1));
+        var t = candidates[k]; candidates[k] = candidates[m]; candidates[m] = t;
+      }
+      for (var e = 0; e < cfg.enemies.length; e++) {
+        var cell = candidates.pop();
+        if (!cell) break;
+        this.enemies.push(new Enemy(cfg.enemies[e], cell.x, cell.y, this));
+      }
+    }
+
+    onSoftDestroyed(cx, cy) {
+      var triggered = false;
+      if (this.exit && this.exit.x === cx && this.exit.y === cy) {
+        this.exit.revealed = true;
+        this.events.push('exit');
+        triggered = true;
+      }
+      if (this.powerupCell && this.powerupCell.x === cx && this.powerupCell.y === cy) {
+        this.pendingItems.push({
+          cx: cx,
+          cy: cy,
+          type: this.powerupType,
+          delay: C.EXPLOSION_TIME + C.ITEM_SPAWN_DELAY
+        });
+        this.powerupCell = null;
+        triggered = true;
+      }
+      return triggered;
+    }
+
+    aliveEnemies() {
+      var n = 0;
+      for (var i = 0; i < this.enemies.length; i++) {
+        if (this.enemies[i].alive) n++;
+      }
+      return n;
     }
 
     bombAt(cx, cy) {
@@ -480,7 +693,7 @@
           if (cell === BM.CELL.SOFT) {
             this.map.destroySoft(cx, cy);
             if (bomb.placer && bomb.placer.id === 0) this.score += 10;
-            this.maybeSpawnItem(cx, cy);
+            if (!this.onSoftDestroyed(cx, cy)) this.maybeSpawnItem(cx, cy);
             break;
           }
 
@@ -607,6 +820,16 @@
 
         if (hit) player.hit(this);
       }
+
+      if (this.mode === 'stage') {
+        for (var e = 0; e < this.enemies.length; e++) {
+          var enemy = this.enemies[e];
+          if (!enemy.alive) continue;
+          var ex = Math.floor(enemy.x);
+          var ey = Math.floor(enemy.y);
+          if (this.explosions.has(BM.key(ex, ey))) enemy.hit(this);
+        }
+      }
     }
 
     isSpawnClear(spawn) {
@@ -664,12 +887,23 @@
         return;
       }
 
-      if (this.aliveCPUs() === 0) {
-        this.outcome = 'win';
+      if (this.timeLeft <= 0) {
+        this.outcome = this.mode === 'stage' ? 'lose' : 'draw';
         return;
       }
 
-      if (this.timeLeft <= 0) this.outcome = 'draw';
+      if (this.mode === 'stage') {
+        if (this.exit && this.exit.revealed && this.aliveEnemies() === 0) {
+          var hx = Math.floor(human.x);
+          var hy = Math.floor(human.y);
+          if (hx === this.exit.x && hy === this.exit.y) this.outcome = 'win';
+        }
+        return;
+      }
+
+      if (this.aliveCPUs() === 0) {
+        this.outcome = 'win';
+      }
     }
 
     update(dt, input) {
@@ -684,6 +918,12 @@
         var player = this.players[i];
         if (player.alive) player.update(dt, this, input);
         else player.updateDead(dt, this);
+      }
+
+      if (this.mode === 'stage') {
+        for (var e = 0; e < this.enemies.length; e++) {
+          if (this.enemies[e].alive) this.enemies[e].update(dt, this);
+        }
       }
 
       for (var b = this.bombs.length - 1; b >= 0; b--) {
@@ -708,5 +948,6 @@
 
   BM.Bomb = Bomb;
   BM.Player = Player;
+  BM.Enemy = Enemy;
   BM.World = World;
 })();

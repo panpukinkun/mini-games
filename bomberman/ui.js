@@ -12,7 +12,9 @@
       lives: $('hudLives'),
       score: $('hudScore'),
       round: $('hudRound'),
+      roundLabel: $('hudRoundLabel'),
       cpu: $('hudCpu'),
+      cpuLabel: $('hudCpuLabel'),
       range: $('hudRange'),
       bombs: $('hudBombs'),
       speed: $('hudSpeed'),
@@ -30,10 +32,20 @@
       toast: $('toast'),
       diff: $('ovDiff'),
       diffHint: $('ovDiffHint'),
-      diffButtons: Array.prototype.slice.call(document.querySelectorAll('.diff-btn'))
+      diffButtons: Array.prototype.slice.call(document.querySelectorAll('.diff-btn')),
+      mode: $('ovMode'),
+      modeButtons: Array.prototype.slice.call(document.querySelectorAll('[data-mode]')),
+      cpuRow: $('ovCpu'),
+      cpuButtons: Array.prototype.slice.call(document.querySelectorAll('[data-cpu]')),
+      carryRow: $('ovCarry'),
+      carryButtons: Array.prototype.slice.call(document.querySelectorAll('[data-carry]'))
     };
     this._primary = null;
     this._difficulty = null;
+    this._mode = null;
+    this._cpu = null;
+    this._carry = null;
+    this._modeVisible = false;
     this._secondary = null;
     this._toastTimer = 0;
     this._lastHud = {};
@@ -70,6 +82,34 @@
       game.audio.unlock();
       game.toggleMute();
     });
+
+    for (var m = 0; m < this.el.modeButtons.length; m++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          game.audio.unlock();
+          game.audio.play('click');
+          if (self._mode) self._mode(btn.getAttribute('data-mode'));
+        });
+      })(this.el.modeButtons[m]);
+    }
+    for (var c = 0; c < this.el.cpuButtons.length; c++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          game.audio.unlock();
+          game.audio.play('click');
+          if (self._cpu) self._cpu(Number(btn.getAttribute('data-cpu')));
+        });
+      })(this.el.cpuButtons[c]);
+    }
+    for (var a = 0; a < this.el.carryButtons.length; a++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          game.audio.unlock();
+          game.audio.play('click');
+          if (self._carry) self._carry(btn.getAttribute('data-carry') === 'on');
+        });
+      })(this.el.carryButtons[a]);
+    }
 
     for (var d = 0; d < this.el.diffButtons.length; d++) {
       (function (btn) {
@@ -206,6 +246,20 @@
     this.el.ovSecondary.style.display = opts.secondary === null ? 'none' : '';
     this._primary = opts.onPrimary || null;
     this._secondary = opts.onSecondary || null;
+    this._mode = opts.onMode || null;
+    this._cpu = opts.onCpuCount || null;
+    this._carry = opts.onCarry || null;
+    this._modeVisible = !!opts.showMode;
+
+    this.el.mode.style.display = this._modeVisible ? 'flex' : 'none';
+    if (this._modeVisible) {
+      this.setMode(opts.mode || 'stage');
+      this.setCpu(opts.cpuCount || 3);
+      this.setCarry(opts.carry !== false);
+    } else {
+      this.el.cpuRow.style.display = 'none';
+      this.el.carryRow.style.display = 'none';
+    }
 
     var showDiff = !!opts.showDifficulty;
     this.el.diff.style.display = showDiff ? 'flex' : 'none';
@@ -221,6 +275,41 @@
     this._primary = null;
     this._secondary = null;
     this._difficulty = null;
+    this._mode = null;
+    this._cpu = null;
+    this._carry = null;
+    this._modeVisible = false;
+  };
+
+  UI.prototype.setMode = function (mode) {
+    for (var i = 0; i < this.el.modeButtons.length; i++) {
+      var btn = this.el.modeButtons[i];
+      var on = btn.getAttribute('data-mode') === mode;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('on', on);
+    }
+    if (this._modeVisible) {
+      this.el.cpuRow.style.display = mode === 'battle' ? 'flex' : 'none';
+      this.el.carryRow.style.display = mode === 'stage' ? 'flex' : 'none';
+    }
+  };
+
+  UI.prototype.setCpu = function (count) {
+    for (var i = 0; i < this.el.cpuButtons.length; i++) {
+      var btn = this.el.cpuButtons[i];
+      var on = Number(btn.getAttribute('data-cpu')) === Number(count);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('on', on);
+    }
+  };
+
+  UI.prototype.setCarry = function (on) {
+    for (var i = 0; i < this.el.carryButtons.length; i++) {
+      var btn = this.el.carryButtons[i];
+      var selected = (btn.getAttribute('data-carry') === 'on') === !!on;
+      btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      btn.classList.toggle('on', selected);
+    }
   };
 
   UI.prototype.setDifficulty = function (key) {
@@ -258,9 +347,13 @@
     var mm = Math.floor(time / 60);
     var ss = time % 60;
     var timeText = mm + ':' + (ss < 10 ? '0' + ss : ss);
-    var cpu = world.aliveCPUs();
+    var stageMode = this.game.mode === 'stage';
+    var cpu = stageMode ? world.aliveEnemies() : world.aliveCPUs();
     var score = (this.game.matchScore || 0) + (world.score || 0);
-    var round = this.game.round || 1;
+    var round = stageMode ? (this.game.stage || 1) : (this.game.round || 1);
+    var roundText = stageMode ? (round + '/' + BM.STAGE_COUNT) : (round + '/3');
+    var roundLabel = stageMode ? 'STAGE' : 'ROUND';
+    var cpuLabel = stageMode ? 'ENEMY' : 'CPU';
 
     if (this._lastHud.time !== timeText) {
       this.el.time.textContent = timeText;
@@ -275,13 +368,17 @@
       this.el.score.textContent = String(score);
       this._lastHud.score = score;
     }
-    if (this._lastHud.round !== round) {
-      this.el.round.textContent = round + '/3';
-      this._lastHud.round = round;
+    if (this._lastHud.round !== roundText || this._lastHud.roundLabel !== roundLabel) {
+      this.el.round.textContent = roundText;
+      this.el.roundLabel.textContent = roundLabel;
+      this._lastHud.round = roundText;
+      this._lastHud.roundLabel = roundLabel;
     }
-    if (this._lastHud.cpu !== cpu) {
+    if (this._lastHud.cpu !== cpu || this._lastHud.cpuLabel !== cpuLabel) {
       this.el.cpu.textContent = String(cpu);
+      this.el.cpuLabel.textContent = cpuLabel;
       this._lastHud.cpu = cpu;
+      this._lastHud.cpuLabel = cpuLabel;
     }
     if (this._lastHud.range !== human.range) {
       this.el.range.textContent = String(human.range);

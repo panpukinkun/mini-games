@@ -14,7 +14,13 @@
 
     this.difficulty = BM.Storage.get('bm_difficulty', BM.DEFAULT_DIFFICULTY);
     if (!BM.DIFFICULTY[this.difficulty]) this.difficulty = BM.DEFAULT_DIFFICULTY;
-    this.world = new BM.World(this.difficulty);
+    this.mode = BM.Storage.get('bm_mode', 'stage');
+    if (this.mode !== 'stage' && this.mode !== 'battle') this.mode = 'stage';
+    this.cpuCount = Math.max(1, Math.min(3, Number(BM.Storage.get('bm_cpu', 3)) || 3));
+    this.carryPower = BM.Storage.get('bm_carry', true) !== false;
+    this.stage = 1;
+    this.carry = null;
+    this.world = new BM.World(this.difficulty, this.worldOptions());
     this.state = 'title';
     this.dpr = 1;
     this.cssW = 0;
@@ -34,10 +40,23 @@
     this._bgKey = '';
 
     this._bindWindow();
+    this._installViewGuards();
     this.resize();
     this.loop.start();
     this.showTitle();
   }
+
+  Game.prototype.worldOptions = function () {
+    if (this.mode === 'stage') {
+      return {
+        mode: 'stage',
+        stage: this.stage,
+        carry: this.carry,
+        carryPower: this.carryPower
+      };
+    }
+    return { mode: 'battle', cpuCount: this.cpuCount };
+  };
 
   Game.prototype._bindWindow = function () {
     var self = this;
@@ -51,6 +70,64 @@
     window.addEventListener('blur', function () {
       if (self.state === 'playing') self.togglePause();
     });
+  };
+
+  Game.prototype._installViewGuards = function () {
+    var self = this;
+    var prevent = function (e) {
+      if (e.cancelable) e.preventDefault();
+    };
+    var insideApp = function (target) {
+      var el = target;
+      while (el && el !== document.body) {
+        if (el.id === 'app' || el.id === 'overlay') return true;
+        el = el.parentNode;
+      }
+      return false;
+    };
+
+    document.addEventListener('gesturestart', prevent, { passive: false });
+    document.addEventListener('gesturechange', prevent, { passive: false });
+    document.addEventListener('gestureend', prevent, { passive: false });
+
+    document.addEventListener('dblclick', function (e) {
+      if (insideApp(e.target)) prevent(e);
+    }, { passive: false });
+
+    document.addEventListener('touchstart', function (e) {
+      if (e.touches.length > 1 && insideApp(e.target)) prevent(e);
+    }, { passive: false });
+    document.addEventListener('touchmove', function (e) {
+      if (e.touches.length > 1 && insideApp(e.target)) prevent(e);
+    }, { passive: false });
+
+    if (window.visualViewport) {
+      var vv = window.visualViewport;
+      vv.addEventListener('resize', function () {
+        self.resize();
+        self._updateZoomReset();
+      });
+      vv.addEventListener('scroll', function () { self._updateZoomReset(); });
+    }
+
+    var reset = document.getElementById('zoomReset');
+    if (reset) {
+      reset.addEventListener('click', function () {
+        if (window.confirm('画面を初期化します。ゲームは最初からになります。')) {
+          window.location.reload();
+        }
+      });
+    }
+    this._updateZoomReset();
+  };
+
+  Game.prototype._updateZoomReset = function () {
+    var el = document.getElementById('zoomReset');
+    if (!el) return;
+    var scale = window.visualViewport ? window.visualViewport.scale : 1;
+    var zoomed = scale > 1.05;
+    el.style.display = zoomed ? 'block' : 'none';
+    document.body.classList.toggle('zoomed', zoomed);
   };
 
   Game.prototype.resize = function () {
@@ -90,15 +167,43 @@
     this.difficulty = key;
     BM.Storage.set('bm_difficulty', key);
     this.ui.setDifficulty(key);
-    this.world = new BM.World(key);
+    this.world = new BM.World(key, this.worldOptions());
     this.ui.updateHUD(this.world);
     this.ui.toast('難易度: ' + BM.DIFFICULTY[key].label);
+  };
+
+  Game.prototype.setMode = function (mode) {
+    if (this.state !== 'title' || (mode !== 'stage' && mode !== 'battle')) return;
+    this.mode = mode;
+    BM.Storage.set('bm_mode', mode);
+    this.ui.setMode(mode);
+    this.ui.toast(mode === 'stage' ? 'ステージモード' : 'たいせんモード');
+    this.showTitle();
+  };
+
+  Game.prototype.setCpuCount = function (count) {
+    if (this.state !== 'title') return;
+    this.cpuCount = Math.max(1, Math.min(3, Number(count) || 3));
+    BM.Storage.set('bm_cpu', this.cpuCount);
+    this.ui.setCpu(this.cpuCount);
+    this.world = new BM.World(this.difficulty, this.worldOptions());
+    this.ui.updateHUD(this.world);
+  };
+
+  Game.prototype.setCarry = function (on) {
+    if (this.state !== 'title') return;
+    this.carryPower = !!on;
+    BM.Storage.set('bm_carry', this.carryPower);
+    this.ui.setCarry(this.carryPower);
+    this.ui.toast(this.carryPower ? 'パワーアップ引き継ぎ: あり' : 'パワーアップ引き継ぎ: なし');
   };
 
   Game.prototype.showTitle = function () {
     this.state = 'title';
     this._resultShown = false;
-    this.world = new BM.World(this.difficulty);
+    this.stage = 1;
+    this.carry = null;
+    this.world = new BM.World(this.difficulty, this.worldOptions());
     this.input.detach();
     this.input.clear();
     this.ui.hideOverlay();
@@ -110,18 +215,28 @@
       record = '<br><br>これまでの成績: <b>勝 ' + (s.wins || 0) + '</b> / 負 ' + (s.losses || 0) + ' / 引き分け ' + (s.draws || 0) + '</b>';
     }
 
+    var body = this.mode === 'stage'
+      ? '全5ステージ。敵をぜんぶ倒して、かべの下の出口をさがそう。<br>爆風に当たるとライフが減るよ。' +
+        '<br><br><b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
+        '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' + record
+      : '1人 vs CPU。3本勝負（2本先取）で勝負！<br>CPUの人数を選べます。' +
+        '<br><br><b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
+        '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' + record;
+
     this.ui.showOverlay({
       title: '🎃 ボムボムパンプキン',
-      body:
-        '3本勝負！ 爆弾でかべをこわし、アイテムをとって、CPU3体を倒そう。<br>' +
-        '2ラウンド先取で勝ち。爆風に当たるとライフが減るよ。<br><br>' +
-        '<b>PC</b>: 矢印/WASDで移動、スペースかZで爆弾、P/Escでポーズ、Mでミュート<br>' +
-        '<b>スマホ</b>: 十字キーと💣ボタン。画面をスクロールしないように固定しています。' +
-        record,
+      body: body,
       primary: 'スタート',
       onPrimary: this.start.bind(this),
       secondary: 'トップへ',
       onSecondary: this.goHome.bind(this),
+      showMode: true,
+      mode: this.mode,
+      onMode: this.setMode.bind(this),
+      cpuCount: this.cpuCount,
+      onCpuCount: this.setCpuCount.bind(this),
+      carry: this.carryPower,
+      onCarry: this.setCarry.bind(this),
       showDifficulty: true,
       difficulty: this.difficulty,
       onDifficulty: this.setDifficulty.bind(this)
@@ -130,15 +245,21 @@
 
   Game.prototype.start = function () {
     this.audio.unlock();
-    this.round = 1;
-    this.roundWins = { player: 0, cpu: 0 };
     this.matchScore = 0;
-    this.startRound();
+    if (this.mode === 'stage') {
+      this.stage = 1;
+      this.carry = null;
+      this.startStage();
+    } else {
+      this.round = 1;
+      this.roundWins = { player: 0, cpu: 0 };
+      this.startRound();
+    }
   };
 
   Game.prototype.startRound = function () {
     this.audio.unlock();
-    this.world = new BM.World(this.difficulty);
+    this.world = new BM.World(this.difficulty, { mode: 'battle', cpuCount: this.cpuCount });
     this.state = 'ready';
     this.readyTimer = 1.8;
     this._resultShown = false;
@@ -150,6 +271,27 @@
     this.ui.hideOverlay();
     this.ui.updateHUD(this.world);
     this.ui.toast('ROUND ' + this.round + ' — ' + BM.DIFFICULTY[this.difficulty].label);
+  };
+
+  Game.prototype.startStage = function () {
+    this.audio.unlock();
+    this.world = new BM.World(this.difficulty, {
+      mode: 'stage',
+      stage: this.stage,
+      carry: this.carry,
+      carryPower: this.carryPower
+    });
+    this.state = 'ready';
+    this.readyTimer = 1.8;
+    this._resultShown = false;
+    this._lastTick = Math.ceil(this.world.timeLeft);
+    this.input.clear();
+    this.ui.clearPadVisual();
+    if (this.ui._clearDpad) this.ui._clearDpad();
+    this.input.attach();
+    this.ui.hideOverlay();
+    this.ui.updateHUD(this.world);
+    this.ui.toast('STAGE ' + this.stage + ' / ' + BM.STAGE_COUNT);
   };
 
   Game.prototype.togglePause = function () {
@@ -211,7 +353,8 @@
 
       if (!this._resultShown && this.world.outcome) {
         this._resultShown = true;
-        this.endRound(this.world.outcome);
+        if (this.mode === 'stage') this.endStage(this.world.outcome);
+        else this.endRound(this.world.outcome);
       }
 
       if (this.world.timeLeft <= 10) {
@@ -252,6 +395,76 @@
       }
     }
     events.length = 0;
+  };
+
+  Game.prototype.endStage = function (outcome) {
+    this.input.clear();
+    this.input.detach();
+    this.ui.clearPadVisual();
+    if (this.ui._clearDpad) this.ui._clearDpad();
+
+    var roundScore = this.world.score || 0;
+    this.matchScore += roundScore;
+    this.world.score = 0;
+    var human = this.world.players[0];
+    var used = Math.max(0, Math.round(this.world.elapsed));
+    var mm = Math.floor(used / 60);
+    var ss = used % 60;
+    var timeText = mm + ':' + (ss < 10 ? '0' + ss : ss);
+
+    if (outcome === 'win') {
+      this.carry = {
+        range: human.range,
+        maxBombs: human.maxBombs,
+        speed: human.speed,
+        lives: human.lives
+      };
+      var timeBonus = Math.floor(this.world.timeLeft) * 5;
+      var clearBonus = 500;
+      this.matchScore += timeBonus + clearBonus;
+      this.ui.updateHUD(this.world);
+
+      if (this.stage >= BM.STAGE_COUNT) {
+        this.state = 'result';
+        this.audio.play('win');
+        this.ui.showOverlay({
+          title: '🏆 ALL CLEAR!',
+          body: '全' + BM.STAGE_COUNT + 'ステージをクリア！<br>合計スコア <b>' + this.matchScore + '</b><br>タイム <b>' + timeText + '</b> / のこりライフ <b>' + human.lives + '</b>',
+          primary: 'もういちど',
+          onPrimary: this.start.bind(this),
+          secondary: 'トップへ',
+          onSecondary: this.goHome.bind(this)
+        });
+      } else {
+        this.state = 'stageOver';
+        this.audio.play('win');
+        this.ui.showOverlay({
+          title: 'STAGE ' + this.stage + ' CLEAR!',
+          body: 'タイム <b>' + timeText + '</b> / のこりライフ <b>' + human.lives + '</b><br>ステージスコア <b>' + roundScore + '</b> / タイムボーナス <b>' + timeBonus + '</b><br>合計スコア <b>' + this.matchScore + '</b>',
+          primary: 'つぎのステージ',
+          onPrimary: (function (self) {
+            return function () {
+              self.stage++;
+              self.startStage();
+            };
+          })(this),
+          secondary: 'トップへ',
+          onSecondary: this.goHome.bind(this)
+        });
+      }
+    } else {
+      this.state = 'result';
+      this.audio.play('lose');
+      this.ui.updateHUD(this.world);
+      this.ui.showOverlay({
+        title: '💥 GAME OVER',
+        body: 'STAGE ' + this.stage + ' で力つきた…<br>合計スコア <b>' + this.matchScore + '</b><br>もういちど挑戦しよう！',
+        primary: 'ステージ1から',
+        onPrimary: this.start.bind(this),
+        secondary: 'トップへ',
+        onSecondary: this.goHome.bind(this)
+      });
+    }
   };
 
   Game.prototype.endRound = function (outcome) {
@@ -464,9 +677,11 @@
 
     this._ensureSprites();
     this._drawBoard(ctx, b);
+    this._drawExit(ctx, b);
     this._drawItems(ctx, b);
     this._drawBombs(ctx, b);
     this._drawExplosions(ctx, b);
+    this._drawEnemies(ctx, b);
     this._drawPlayers(ctx, b);
     this._drawParticles(ctx, b);
     if (this.state === 'ready') this._drawReady(ctx, b);
@@ -588,6 +803,98 @@
     ctx.stroke();
   };
 
+  Game.prototype._drawExit = function (ctx, b) {
+    if (this.world.mode !== 'stage' || !this.world.exit || !this.world.exit.revealed) return;
+    var t = b.tile;
+    var x = b.ox + this.world.exit.x * t;
+    var y = b.oy + this.world.exit.y * t;
+    var ready = this.world.aliveEnemies() === 0;
+    ctx.save();
+    if (ready) {
+      ctx.shadowColor = '#ffd76a';
+      ctx.shadowBlur = t * 0.7;
+    }
+    ctx.fillStyle = ready ? '#3b245c' : '#231936';
+    this._roundRect(ctx, x + t * 0.16, y + t * 0.18, t * 0.68, t * 0.7, t * 0.12);
+    ctx.fill();
+    ctx.strokeStyle = ready ? '#ffd76a' : '#7d5bff';
+    ctx.lineWidth = Math.max(1.5, t * 0.06);
+    ctx.stroke();
+    ctx.fillStyle = ready ? '#ffd76a' : '#9b86c9';
+    ctx.beginPath();
+    ctx.moveTo(x + t * 0.5, y + t * 0.3);
+    ctx.lineTo(x + t * 0.68, y + t * 0.58);
+    ctx.lineTo(x + t * 0.32, y + t * 0.58);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#1a1020';
+    ctx.beginPath();
+    ctx.arc(x + t * 0.5, y + t * 0.68, Math.max(1.5, t * 0.05), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  Game.prototype._drawEnemies = function (ctx, b) {
+    var t = b.tile;
+    for (var i = 0; i < this.world.enemies.length; i++) {
+      var e = this.world.enemies[i];
+      if (!e.alive) continue;
+      var cx = b.ox + e.x * t;
+      var cy = b.oy + e.y * t;
+      var r = t * 0.32;
+      var bob = Math.sin(e.anim * 6) * r * 0.08;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + r * 0.9, r * 0.9, r * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = e.type === 'ghost' ? 0.78 : 1;
+      ctx.fillStyle = e.spec.color;
+      ctx.beginPath();
+      ctx.arc(cx, cy + bob, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // horns
+      ctx.fillStyle = '#f4e6ff';
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.55, cy - r * 0.7 + bob);
+      ctx.lineTo(cx - r * 0.85, cy - r * 1.28 + bob);
+      ctx.lineTo(cx - r * 0.18, cy - r * 0.9 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + r * 0.55, cy - r * 0.7 + bob);
+      ctx.lineTo(cx + r * 0.85, cy - r * 1.28 + bob);
+      ctx.lineTo(cx + r * 0.18, cy - r * 0.9 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // eyes
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.34, cy - r * 0.08 + bob, Math.max(1.5, r * 0.25), 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.34, cy - r * 0.08 + bob, Math.max(1.5, r * 0.25), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1020';
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.3, cy - r * 0.06 + bob, Math.max(0.8, r * 0.11), 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.38, cy - r * 0.06 + bob, Math.max(0.8, r * 0.11), 0, Math.PI * 2);
+      ctx.fill();
+
+      // mouth
+      ctx.strokeStyle = '#3a1020';
+      ctx.lineWidth = Math.max(1, t * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.28, cy + r * 0.38 + bob);
+      ctx.lineTo(cx, cy + r * 0.5 + bob);
+      ctx.lineTo(cx + r * 0.28, cy + r * 0.38 + bob);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
   Game.prototype._drawItems = function (ctx, b) {
     var t = b.tile;
     var self = this;
@@ -678,14 +985,6 @@
       ctx.ellipse(cx, cy + r * 0.9, r * 0.95, r * 0.28, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      if (!p.isCPU) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.lineWidth = Math.max(1.5, t * 0.055);
-        ctx.beginPath();
-        ctx.arc(cx, cy + r * 0.18, r * 1.28, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
       // feet / boots
       ctx.fillStyle = p.color;
       this._roundRect(ctx, cx - r * 0.48, cy + r * 0.55 + walk, r * 0.36, r * 0.3, r * 0.1);
@@ -758,6 +1057,24 @@
       ctx.arc(hx - hr * 0.32 + ex, hy + hr * 0.08 + ey, Math.max(0.8, hr * 0.12), 0, Math.PI * 2);
       ctx.arc(hx + hr * 0.36 + ex, hy + hr * 0.08 + ey, Math.max(0.8, hr * 0.12), 0, Math.PI * 2);
       ctx.fill();
+
+      if (p.isCPU) {
+        // enemy sunglasses: clearly distinguish CPU bombers from the player
+        ctx.fillStyle = '#101018';
+        this._roundRect(ctx, hx - hr * 0.78 + ex * 0.2, hy + hr * 0.02 + ey * 0.2, hr * 1.56, hr * 0.34, hr * 0.13);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(120, 210, 255, 0.55)';
+        this._roundRect(ctx, hx - hr * 0.62 + ex * 0.2, hy + hr * 0.09 + ey * 0.2, hr * 0.38, hr * 0.08, hr * 0.04);
+        ctx.fill();
+        this._roundRect(ctx, hx + hr * 0.22 + ex * 0.2, hy + hr * 0.09 + ey * 0.2, hr * 0.34, hr * 0.07, hr * 0.04);
+        ctx.fill();
+        ctx.strokeStyle = '#101018';
+        ctx.lineWidth = Math.max(1, t * 0.04);
+        ctx.beginPath();
+        ctx.moveTo(hx - hr * 0.05, hy + hr * 0.02);
+        ctx.lineTo(hx + hr * 0.05, hy + hr * 0.02);
+        ctx.stroke();
+      }
 
       // mouth
       ctx.strokeStyle = 'rgba(120,60,30,0.7)';

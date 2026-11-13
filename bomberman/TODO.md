@@ -10,17 +10,27 @@
 [x] Phase 5.6: 最適化（背景/タイル/爆風/音/BFS）
 [x] Phase 6a: 自動検証（node --check / verify_all / dom_smoke / sim / playtest / longrun）
 [x] Phase 6b: Chromium（PC/モバイル/横向き/320px/難易度/file://）
-[x] Phase 6c: クラシック化（グリッド移動・タップバッファ・古典HUD・READY/GO・3本勝負・スコア・スプライト・十字火炎）
-[ ] Phase 6d: iPhone/Android実機の音声・safe-area・タッチ確認 — 公開後
+[x] Phase 6c: クラシック化（グリッド移動・タップバッファ・古典HUD・READY/GO・スコア・スプライト・十字火炎）
+[x] Phase 6d: 画面揺れ撤去、スコア二重表示修正
 [x] Phase 6e: D-pad単一サーフェス化・スライド・デッドゾーン・ターンバッファ・即時反転
-[x] Phase 6f: タップ1マス/長押し連続の分離、タップ余韻の再消費防止（移動しすぎ修正）
-[x] Phase 6g: 画面揺れ撤去、ラウンド終了時のスコア二重表示修正
-[x] Phase 7: クラシック版＋D-pad改善＋過剰移動＋揺れ撤去を本番反映・Pagesビルド・本番URL確認 — 完了（2767624）
+[x] Phase 6f: タップ1マス/長押し連続の分離、タップ余韻の再消費防止
+[x] Phase 6g: iPadズーム防止（touch-action / gesture / dblclick / visualViewport / リセット）
+[x] Phase 6h: 自キャラの丸削除、CPUサングラス
+[x] Phase 6i: ステージモード（5面・敵・隠し出口・ライフ・時間・スコア）
+[x] Phase 6j: パワーアップのステージ間引き継ぎ（ON/OFF）
+[x] Phase 6k: モード選択（ステージ/たいせん）、CPU人数1〜3
+[x] Phase 6l: HUD/勝敗表示（STAGE/ENEMY、STAGE CLEAR、ALL CLEAR、GAME OVER）
+[x] Phase 6m: ステージ到達性・出口・引き継ぎ・クリア条件の検証
+[ ] Phase 6n: iPad実機でズーム・爆弾・画面復帰を確認 — 公開前
+[ ] Phase 7: 全修正後に一度だけビルド・Pages・本番URL確認
 
 ## 手動確認チェックリスト
-- [ ] PC: 矢印/WASD＋Space、P/Escポーズ、Mミュートで1試合完走
-- [ ] スマホ: 十字＋💣、48px以上、スクロール/ズーム無効、safe-area
-- [ ] 初回タップで音が鳴る（iOS/Android）
-- [ ] READY→GO→ラウンド→最終結果→もういちど
-- [ ] ハブのカード・QR・リンクから起動
+- [ ] iPad: D-padダブルタップでズームしない
+- [ ] iPad: ズーム後も爆弾が置ける／画面を戻せる
+- [ ] ステージ: 敵全滅→出口→つぎのステージ
+- [ ] パワーアップ引き継ぎON/OFF
+- [ ] たいせん: CPU 1/2/3、ラウンド→最終結果
+- [ ] STAGE CLEARで「もういちど」が出ない
+- [ ] ALL CLEAR / GAME OVER の文言
+- [ ] PC/スマホ/タブレットの操作・音・safe-area
 - [ ] コンソールエラー0件

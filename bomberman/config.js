@@ -93,4 +93,19 @@
   };
 
   BM.DEFAULT_DIFFICULTY = 'normal';
+
+  BM.ENEMY_TYPES = {
+    walker: { speed: 1.15, score: 100, color: '#ff8a2a', passSoft: false },
+    chaser: { speed: 1.65, score: 200, color: '#b06bff', passSoft: false },
+    ghost: { speed: 1.35, score: 400, color: '#4ad6a0', passSoft: true }
+  };
+
+  BM.STAGES = [
+    { n: 1, time: 200, soft: 0.50, enemies: ['walker', 'walker', 'walker'] },
+    { n: 2, time: 200, soft: 0.54, enemies: ['walker', 'walker', 'walker', 'chaser'] },
+    { n: 3, time: 200, soft: 0.58, enemies: ['walker', 'walker', 'walker', 'chaser', 'chaser'] },
+    { n: 4, time: 200, soft: 0.60, enemies: ['walker', 'walker', 'chaser', 'chaser', 'chaser'] },
+    { n: 5, time: 200, soft: 0.62, enemies: ['walker', 'walker', 'chaser', 'chaser', 'chaser', 'ghost'] }
+  ];
+  BM.STAGE_COUNT = BM.STAGES.length;
 })();

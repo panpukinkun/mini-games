@@ -84,6 +84,7 @@ els.cv.getContext = () => ctx;
 const doc = {
   readyState: 'complete',
   hidden: false,
+  body: makeEl('body'),
   getElementById(id) {
     if (!els[id]) els[id] = makeEl(id);
     return els[id];
@@ -183,6 +184,7 @@ for (const f of files) {
 let game = sandbox.__BM_GAME__;
 if (!game) game = new sandbox.BM.Game();
 
+game.setMode('battle');
 game.setDifficulty('hard');
 game.start();
 for (let i = 0; i < 600; i++) game.step(1 / 60);
